@@ -93,15 +93,32 @@ rows of the failures log / spans), and a **per-round prompt = packet-pointer + W
 delta**. Compaction is safe here **only because a different prong holds the invariants** — intent lives in
 Simba's IntentCard, re-asserted, never summarized.
 
-**Mandatory: the fail-closed invariant gate.** Before promoting any compacted WorkingState, run the
-invariant as an executable check; **block** if it doesn't hold. This is the guarantee, not the hope.
+### The policy (calibrated from RESULT-05)
+1. **Compact history, never the artifact.** The current artifact is the irreducible floor; keep it verbatim.
+   All savings come from dropping superseded versions, reasoning, and tool-output.
+2. **Threshold-trigger — don't compact every round.** The contract's fixed overhead (packet + IntentCard)
+   loses at low history. Accumulate while cheap; switch to the contract once **per-round history exceeds the
+   carried artifact** (empirically ≈ round 4; cumulative cut then climbs 43% → 56% by round 6).
+3. **Pin invariants out-of-band (Simba's IntentCard).** This is *why* compaction is safe — a different prong
+   holds what you're compressing away. Never fold invariants into the lossy stream.
+4. **Gate every compaction (mandatory).** Before promoting a compacted WorkingState, run the invariant as an
+   executable check and **block** on fail. This is the guarantee, not the hope.
+5. **Aim it at high-history loops** (research fan-outs, multi-round debugging, migrations). Not 2–3 round
+   tasks, where compaction *loses*.
+6. **Per-prong budgets + retrieval slice.** Simba tiny (intent + Output digest) · Auditor medium (Output +
+   Spans + active detectors) · Do-er largest (artifact + delta). Pull only tag-relevant failures/spans.
 
-**Honest status (RESULT-05, Fable-certified):** the contract is **proven safe and quality-preserving** and
-the gate works by construction (P2/P3/P4 passed); the pinned IntentCard even *strengthened* an invariant a
-full-history arm left as a gap. Its **efficiency payoff is conditional** — at 3 rounds with terse history the
-context cut was only 31% (missed the pre-registered 40%), because the carried artifact dominates. The win
-grows with round count and reasoning-heavy history; treat efficiency as open until re-run at 6+ rounds. Use
-the contract for **safety + intent-preservation** now; don't headline it as a token-savings win yet.
+### Enforcement (a policy is real only once its check runs — CF-034)
+Prose can't enforce itself. The three **safety** rules (4 gate · 1 keep-artifact · 3 pin-intent) are a
+**fail-closed gate the Auditor executes**, `tests/compaction_policy.py` — proven: it BLOCKS a dropped
+invariant, a dropped artifact, and an unpinned invariant, and PROMOTES only a clean compaction (6/6). Rule 2
+(when to compact) is **advisory** — compacting too early only wastes tokens, it can't break correctness, so
+it's a `should_compact()` helper, not a gate.
+
+**Honest status (RESULT-05, Fable-certified):** proven **safe + quality-preserving** (P2/P3/P4 passed; the
+pinned IntentCard even *strengthened* an invariant a full-history arm left as a gap). Efficiency is
+**round-count-dependent**: 31% cut at 3 rounds (missed the pre-registered 40%), crossing 40% at round 4 and
+56% by round 6. Use it for **safety + intent-preservation** now, and for **tokens** only past the crossover.
 
 ## The method in one line
 **Split the work into small bounded loops; in each, let an agent loyal to a different master try to break the
