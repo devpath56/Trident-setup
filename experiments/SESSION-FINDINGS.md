@@ -58,3 +58,40 @@ Trident vs single-Opus on the sponsor-first rubric. Arm A (single Opus): winner 
 stopped R4. Arm B (Trident): winner audited **78.1**, ran to the 5-round cap, never faked ≥85. Findings:
 (1) the independent auditor prevented the inflated win; (2) both optimized the wrong rubric — the human
 caught it. Superseded by the people-first re-run as the real deliverable.
+
+## D · Efficiency / token-waste findings (evidence-based, from this run)
+
+Real inefficiencies observed this session, each a Trident guard candidate. These are the token leaks a
+harness should close.
+
+- **CF-060 — retried a blocked fetch before reading the environment's own diagnostics.** Hit the Luma
+  wall via WebFetch → curl → curl → playwright → playwright (5 attempts) before reading `/root/.ccr/README.md`
+  + proxy status, which named it a policy denial immediately. Two curl attempts also used a STALE proxy
+  port (44661 vs live 45771) → HTTP 000, pure waste. *Guard:* on a fetch/tool failure, read the tool's
+  own status/README and re-resolve env (proxy port) BEFORE retrying; classify persistent-vs-transient first (ties CF-016).
+
+- **CF-061 — subagent context-handoff gap caused a side-effect + re-run.** The Exp-1 RAT-gate Fable
+  auditor ran its probe against the PyPI `python-slugify` (and `pip install`ed it) instead of the local
+  arm repo, because its prompt lacked the environment constraint ("use the local repo, do not install
+  globally"). I then re-ran the probe against local code AND had to uninstall the stray package. *Guard:*
+  every spawned subagent's prompt must carry the environment context it needs (working dir, "no global
+  installs", which artifact to touch) — hand off the full needed context, not a partial task.
+
+- **CF-062 — duplicate fetch of the same source.** `config/auto-research.md` was WebFetched twice (once
+  for methodology, once for the skills list). *Guard:* fetch a source once and extract all needed fields
+  in a single pass; cache the raw in run-state.
+
+- **CF-063 — no shared memory across subagent rounds → full context re-injected every round.** Each
+  Do-er/Auditor round re-received the entire event packet + sponsor list + rules in its prompt (there is
+  no shared IntentCard the subagents read). Over ~15 subagent calls that's a large repeated token tax.
+  *Guard:* keep a compact run-state artifact (IntentCard + frozen packet) and pass per-round prompts as
+  DELTAS referencing it — the RAT/delta principle applied to prompt construction, not just scoring.
+
+- **CF-064 — wrong-objective rework (the mega-waste).** 5 full sponsor-first rounds (Do-er+Auditor each
+  = ~10 subagent calls) were discarded when the rubric turned out mis-specified. Largest single token
+  sink of the session. *Guard:* CF-057's intake conflict-check would have caught it before round 1 — the
+  cheapest fix pays for itself many times over here.
+
+- **Process note — double-commit overhead.** Every change is committed to the branch, then copied to the
+  standalone repo and committed+pushed again (2× git ops per change) to keep the mirror in sync. Fine for
+  now; a single source + a release script would halve it.
