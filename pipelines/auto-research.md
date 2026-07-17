@@ -55,6 +55,15 @@ Loop mechanics (RAT-style, token-lean):
 The winner + a **build plan** mapping each **sponsor tool → feature → resume skill**, PLUS the
 **anchor → referral path** (whose work it's built on, why they'll engage, the intro it earns).
 
+**Dual-track build plan (PM ⇄ Engineer):** the winner's build plan is a **two-lane, time-boxed
+swimlane** so both roles stay occupied and the feedback loop stays tight:
+- **Engineer lane** — builds the loop (fork the anchor's template → wire the sponsor gate → deny→self-correct
+  → harden → polish → freeze).
+- **PM lane** — builds the eval + story **one slice ahead** (freeze acceptance cases → benchmark → score each
+  slice vs acceptance → map features→resume-skills → demo script → approach the anchor with working evidence).
+- **Sync every ~90 min** at a named checkpoint; the rule is **"the PM's eval of the last slice is the
+  Engineer's next input."** Nobody idle; loop-engineering applied to the team. Emit it as its own artifact.
+
 **Output format:** deliver as a **concise visual artifact (< 200 words)** — nested bullets, tables, and a
 small theme-aware infographic — not a prose wall. Every checkpoint/leaderboard uses the same format.
 
@@ -63,6 +72,20 @@ small theme-aware infographic — not a prose wall. Every checkpoint/leaderboard
 the authored artifact to build on · background · how to approach · affinity, with honesty flags on any
 `unverified-fetch` item) — **plus one comparison artifact** (head-to-head table + a "pick this if…" guide)
 so the user chooses.
+
+## Hands-free readiness — gated autonomy, not full
+The pipeline runs itself between **three unavoidable human touchpoints** — everything else (research,
+ideation, scoring, all artifacts, the dual-track build plan) runs unattended to "artifact set complete":
+1. **Feed the event data** once at the start — blocked pages (Luma & first-party sites 403 at the gateway,
+   CF-058) can't be fetched unattended; paste/upload is a HARD stop.
+2. **Resolve a flagged objective conflict** — only fires if stated params clash with the reference method
+   (CF-057); otherwise silent.
+3. **Pick from the top-3** — the DECIDE step is the user's taste, not the score's (a HARD stop by design).
+
+Residual risks to surface, never hide: inflated winner (mitigated by independent Fable audit, fail-closed),
+unverified anchor intel (tag every `unverified-fetch`), and **stale facts** (anchors/events perish — add a
+freshness note on any fact older than the event cycle). Emit a **hands-free readiness artifact** (failure
+modes + the 3 gates) so the user knows exactly where it will pause.
 
 ## Honest-scoring guardrails (learned the hard way)
 - **Independent audit beats self-score.** A self-scoring agent inflates ~15–20 pts (double-counts name-dropped
@@ -76,3 +99,5 @@ so the user chooses.
 - `report.md` — Phase 0–1 summary (event packet + anchor table), ends "NEEDS YOU: confirm framing/anchor".
 - `roads-not-taken.md` — dropped ideas + why + a revisit trigger.
 - `build-plan.md` — winner, sponsor→feature→skill map, anchor→referral path, grey-case notes.
+- `dual-track.md` — PM ⇄ Engineer swimlane (time-boxed lanes + ~90-min sync checkpoints).
+- `hands-free.md` — failure-modes table + the 3 gated touchpoints (where it pauses unattended).
