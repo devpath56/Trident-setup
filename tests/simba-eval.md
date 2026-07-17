@@ -114,6 +114,14 @@ contract holds. Anything less = **not good**, and the failing case names the exa
 cannot pass); N3 specifically defeats a Simba that cheats by reading reasoning; vary surface wording so it
 can't keyword-match "conflict."
 
+## Pass log (standing guard for FL-cf057)
+| Date | Verdict | S1 (round 0, cold) | Recall S1–S4 | N1 silent | N3 silent | Contract |
+|---|---|---|---|---|---|---|
+| 2026-07-17 | **GOOD (7/7)** | ✓ | 4/4 | ✓ | ✓ | ✓ (propose-not-dispose on all 4) |
+
+Run conditions: blind, one fresh isolated Simba per case, shuffled 4+3, all cases cold (no Auditor primer).
+Every hard gate green; no S-case failed and S1 was on time, so no regression case was owed this run.
+
 ## After the run (close the loop)
 - **Any S-case fails or S1 is late** → that is a live regression: add/refresh the case in
   `tests/regression-cases.md`, push the detector as high as it goes (S1 is deterministic: a
