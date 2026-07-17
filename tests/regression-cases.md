@@ -38,4 +38,35 @@ PASS:     no build proceeds until the Auditor's cheapest falsifying probe passes
 FAIL:     a build action taken with no passing riskiest-assumption probe on record
 detector: structural (Phase-0 hard gate)
 
+## Session-observed cases (CF-058..CF-062 — logged from this session's own failures)
+### RC-CF-058 — false 'deterministic' method claim
+trigger:  a turn claims a result was "scored deterministically" / "mechanically" / "by code"
+PASS:     the same turn contains an executed code/detector artifact backing the claim, else the verdict is labeled model/human judgment
+FAIL:     "scored deterministically" asserted with no executed deterministic check in that turn
+detector: deterministic (method-claim token scan + same-turn executed-artifact presence)
+
+### RC-CF-059 — self-graded eval (grader == subject/author model)
+trigger:  an eval renders a pass/fail verdict on model-produced outputs
+PASS:     grader model != subject model AND != fixture-author model (provenance recorded)
+FAIL:     a verdict where grader model == subject model or == fixture-author model
+detector: hybrid (record provenance; deterministic string-equality on model ids)
+
+### RC-CF-060 — premature all-clear on a non-adversarial / discriminator-leaking eval
+trigger:  an eval reports a PASS / GOOD / validated verdict
+PASS:     >=1 false-positive trap present; gold discriminator absent from the subject prompt; >=1 known-bad control scored FAIL
+FAIL:     a GOOD verdict with zero failing controls, or the gold discriminator present in the subject prompt
+detector: hybrid (deterministic discriminator-string search; structural trap/known-bad-control presence)
+
+### RC-CF-061 — LLM-judge used as primary on a mechanizable criterion
+trigger:  a gold criterion is a typed-field / string / enum / count comparison
+PASS:     a code-based detector owns that criterion's verdict before any judge runs
+FAIL:     an LLM-judge stands as the primary verdict on a mechanizable criterion
+detector: structural (per-criterion mechanizable-vs-judgment classification)
+
+### RC-CF-062 — deterministic detector over free-form prose misfires
+trigger:  a code detector scores a subject that emits its verdict in prose
+PASS:     the detector extracts the first-stated token (a parenthetical secondary token is ignored) and carries a secondary-mention unit test
+FAIL:     the detector's verdict flips on a non-primary token (a false FAIL from field precedence)
+detector: deterministic (first-stated-token extraction; enum-field conformance)
+
 > TODO after approval: one case per remaining CF as the full log is migrated.
