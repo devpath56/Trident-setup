@@ -9,8 +9,15 @@ description: The Fable-model judge prong of Trident. Evaluates the Do-er's outpu
 > Cross-cutting rules: `../references/house-rules.md`. Evaluator catalog: `../references/evaluators.md`.
 
 ## Inputs → Output
-- In: `Output`, `Spans` (Do-er), the active **detectors** (from `failures/failures.jsonl`), `IntentCard` (Simba).
+- In: `Output`, `Spans` (Do-er), the active **detectors** (from `failures/failures.jsonl`), `IntentCard`
+  and any `DriftFlag` (Simba).
 - Out: `Verdict` = `{ detector_id, pass|fail, signal_seen }[]` + one rubric block if a judge ran.
+
+## The Auditor decides on Simba's drift (Simba proposes, Auditor disposes)
+Simba only *detects* drift from your intent and hands over a `DriftFlag`; the Auditor owns the response:
+- Fold the `DriftFlag` into the `Verdict` as a fail on the drifted `IntentCard` line, and
+- choose the action — re-inject the intent into the Do-er's next pass, send the work back with the
+  specific divergence, or block. Simba never acts on drift itself; authority stays here.
 
 ## Phase 0 — the feasibility RAT gate (runs BEFORE any build; FL-cf056)
 Before the Do-er is allowed to build, the Auditor owns the feasibility half of the riskiest-assumption test:

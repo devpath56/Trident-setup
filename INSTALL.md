@@ -16,9 +16,10 @@ Invoke with: **"run trident"**, **"audit this work"**, **"watch my intent on thi
 always-on **"log failure"** trigger. In VS Code, the Claude Code extension picks up
 `~/.claude/skills/` the same way.
 
-## claude.ai / Cowork
-Upload the `.claude/skills/` tree (or the repo) as a skill bundle. The skills load with zero setup.
-Note the surface difference below.
+## Surface: Claude Code / VS Code only
+Trident's orchestration spawns real **subagents** (Do-er, a Fable Auditor, Simba), so it targets
+Claude Code / VS Code where subagents exist — not claude.ai / Cowork. Install stays trivial (a skills
+tree, no build, no deps); it's the runtime that needs subagents.
 
 ## The failures log — one SSOT across sessions
 `log failure` (and variants: "log fail", "log this failure", "record failure") appends the next
@@ -26,10 +27,8 @@ Note the surface difference below.
 session, **this repo must be in the session's scope** (add it if not). Every session then writes to
 the same canonical file.
 
-| Surface | `log failure` behavior |
-|---|---|
-| Claude Code / repo session | full loop; SSOT is the git file; append → Auditor-approve → commit + push |
-| claude.ai / Cowork | degrades to the connected copy / chat; the canonical file stays the repo's |
+In a Claude Code / VS Code session with this repo in scope: `log failure` appends the next `CF-###`,
+the Auditor approves it, and it's committed + pushed to the SSOT git file.
 
 Personal specifics never enter the committed record — they go to `failures.local.jsonl` (gitignored).
 

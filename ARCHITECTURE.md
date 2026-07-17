@@ -4,9 +4,10 @@
 > references are stubbed to match it; deep logic is filled in *after* this design is approved.
 
 ## What Trident is
-A **portable, zero-dependency skill bundle** (same class as this kit — runs in claude.ai,
-Cowork, and Claude Code with no build, no deps, no hooks) that wraps any working session in a
-**three-prong quality harness**. The three prongs:
+A **skill bundle for Claude Code / VS Code** (no build, no deps) that wraps any working session in a
+**three-prong quality harness**. It installs as plain skills, but its orchestration relies on real
+**subagents**, so the target surface is Claude Code / VS Code where those exist — not claude.ai / Cowork.
+The three prongs:
 
 ```
              ┌── the work ──────────────┐
@@ -18,8 +19,10 @@ Cowork, and Claude Code with no build, no deps, no hooks) that wraps any working
 ```
 
 - **Do-er** — the model doing the actual task (Opus by default). Trident does not replace it; it watches it.
-- **Simba** — a subagent **loyal to you**. Reads *only your messages*, tracks intent, and injects
-  the thing the Do-er is about to forget deep in its work back into the loop before it drifts.
+- **Simba** — a subagent **loyal to you**, and a **counterweight to the model's recency bias**: it
+  durably remembers your goal and the corrections you've already made (which otherwise decay under the
+  latest message), reads the Do-er's *result* to detect drift from that intent, and **flags it to the
+  Auditor, which decides the response**. Simba proposes; the Auditor disposes.
 - **Auditor** — a **Fable** subagent. Judges the Do-er's output with **deterministic evaluators first**,
   an **LLM-judge second** (per FL-cf051), modeled on Arize Phoenix's evaluator taxonomy.
 
@@ -54,7 +57,7 @@ context-degradation and instruction-collision failures (FL-cf009, FL-cf011).
 2. AUDITOR.evaluate(Output, Spans,
                     detectors, IntentCard) → Verdict           (deterministic first, judge second)
 3. if Verdict.fail → back to DO-ER with the specific failing detector(s)   (bounded retries)
-   if Simba flags intent-drift → inject the IntentCard delta into step 2
+   if Simba emits a DriftFlag → the AUDITOR folds it into the Verdict and decides the action
 4. on pass → surface to you. on a NEW failure mode → log it (SSOT), Auditor approves, you see it.
 ```
 
@@ -62,7 +65,8 @@ Artifacts exchanged between prongs (the only things that cross a loop boundary):
 
 | Artifact | Producer | Consumer | Shape |
 |---|---|---|---|
-| `IntentCard` | Simba | Auditor | user-goal, must-haves, forbid-list, drift-signals, **intent-riskiest assumption** |
+| `IntentCard` | Simba | Auditor | goal, must-haves, forbid-list, **pinned feedback**, intent-riskiest assumption (a persistent ledger, re-asserted each loop) |
+| `DriftFlag` | Simba | Auditor | which IntentCard line the Do-er's `Output` diverged from + the evidence |
 | `AssumptionSet` | Do-er | Auditor | every assumption the plan rests on, each tagged type + kill-power + uncertainty |
 | `RATVerdict` | Auditor | Do-er | the single riskiest assumption + the cheapest falsifying probe + the hard gate |
 | `Spans` | Do-er | Auditor | Phoenix/OpenInference-shaped span list (see below) |
@@ -101,8 +105,8 @@ Phoenix's shapes**, so the whole thing is forward-compatible with a real Phoenix
 - **Evaluators** — code-based + LLM-based + human-label, exactly Phoenix's three kinds.
 - **Datasets / experiments** — the `failures.jsonl` SSOT *is* the curated failure dataset;
   Phoenix's loop (trace → evaluate → curate failures → iterate) is Trident's loop.
-- The optional (out-of-scope, by your "pure skill bundle" call) Python harness would pipe these
-  same records into a live Phoenix instance with zero reshaping.
+- An optional (out-of-scope) Python harness could pipe these same records into a live Phoenix instance
+  with zero reshaping.
 
 Sources for the Phoenix shapes: see `references/phoenix-protocol.md`.
 
@@ -121,10 +125,20 @@ Sources for the Phoenix shapes: see `references/phoenix-protocol.md`.
 
 See `references/failures-log.md` for the record schema and the `log failure` protocol.
 
-## Open decisions for you (before I flesh out the logic)
-1. **JSONL** for the SSOT — confirmed as my recommendation; veto here if you'd rather keep markdown.
-2. **Standalone repo** — I can create `devpath56/Trident` (public) once you confirm; until then this
-   is staged under `trident/` on this branch. Creating a public repo is the one outward action I'll
-   hold for your explicit go.
-3. **Full seed migration** — I've seeded a sanitized *representative* set now. Migrating all 55
-   CFs (carefully sanitized, with an auditor pass per your FL-cf052) is a follow-up once the schema is approved.
+## Decisions locked
+- **SSOT format:** JSONL, one CF per line. ✓
+- **Standalone repo:** live at `devpath56/Trident-setup` (public); `trident/` here is the staging mirror. ✓
+- **Failures seed:** all 55 historical CFs migrated + CF-056 (built-before-feasibility). ✓
+- **Riskiest-assumption gate:** Phase 0, hard block, always (Auditor owns feasibility, Simba owns intent). ✓
+- **Simba's role:** durable intent memory + recency-bias counterweight; reads the Do-er's *Output* (not
+  its reasoning) to detect drift; emits a `DriftFlag`; the **Auditor decides** the response. ✓
+- **Cost stance:** all three prongs fire every loop (no lightweight path). The extra round-trips are
+  accepted **if** quality earns them — that's exactly what the experiment's quality-per-token tiebreak tests. ✓
+- **Surface:** Claude Code / VS Code only (subagents are the runtime mechanism). ✓
+- **Success rubric:** validity gate → **fewer user prompts + faster** (primary) → quality-per-token (tiebreak);
+  blind, deterministic-anchored judge. See `experiments/EXPERIMENT-TEMPLATE.md`. ✓
+
+## Still open
+- **The orchestration logic** — how each prong is actually spawned as a subagent, the retry bound, and
+  the exact `log failure` git flow — is specified as contracts but not yet built. That's the next build.
+- **The experiment run itself** — pick a medium-complexity OSS feature and run Arm A vs Arm B.

@@ -8,9 +8,13 @@ instruction sets blend.
 ## Isolation boundaries
 | Prong | Sees | Never sees | Owns |
 |---|---|---|---|
-| Simba | user messages only | Do-er work, Auditor scratch | `IntentCard` (incl. intent-riskiest), its own todolist |
+| Simba | user messages (persisted) + Do-er `Output` | Do-er **reasoning/scratch**, Auditor internals | `IntentCard` (incl. intent-riskiest), `DriftFlag`, its own todolist |
 | Do-er | the task + failing detectors + `RATVerdict.probe` | Simba's raw notes, Auditor rubric internals | `AssumptionSet`, `Output`, `Spans`, its own todolist |
-| Auditor | `AssumptionSet`, `IntentCard`, `Output`, `Spans`, detectors | Do-er's chain-of-thought scratch | `RATVerdict`, `Verdict`, CF approvals, its own todolist |
+| Auditor | `AssumptionSet`, `IntentCard`, `DriftFlag`, `Output`, `Spans`, detectors | Do-er's chain-of-thought scratch | `RATVerdict`, `Verdict`, CF approvals, its own todolist |
+
+**Simba proposes, the Auditor disposes.** Simba reads the Do-er's *result* (`Output`) to detect drift
+from your intent — but only the result, never the reasoning. It emits a `DriftFlag`; the **Auditor**
+decides the action. Simba never edits, never argues with the Do-er, never acts on drift itself.
 
 ## Phase 0 crosses the same boundaries
 The riskiest-assumption gate reuses the isolation rules, not a shortcut around them: the Do-er hands the
@@ -34,4 +38,4 @@ open detector to the user — never loop silently, never pass to escape the loop
 persistent: retry the real failure, don't reroute around it).
 
 > TODO after approval: exact retry bound, artifact serialization format, how prongs are spawned as
-> subagents on each surface (Claude Code vs Cowork).
+> subagents in Claude Code / VS Code (Do-er, Fable Auditor, Simba).

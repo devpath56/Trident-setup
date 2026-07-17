@@ -35,12 +35,12 @@ On any of these:
 5. Commit + push the SSOT to the Trident repo (git-tracked SSOT, same discipline as this kit's `progress.json`).
 6. Confirm back to the user: `logged CF-### (<title>)` — so a silent skip is impossible (FL-cf046).
 
-## Surface differences
-- **Claude Code / repo session:** full loop; SSOT is the git file; `log failure` commits + pushes.
-- **claude.ai / Cowork:** no git; the SSOT read/write degrades to the connected copy or chat, and the
-  canonical file stays the repo's. Never claim a write happened if it didn't (FL-cf046).
+## Surface
+Claude Code / VS Code only — the loop spawns real subagents (Do-er, Fable Auditor, Simba). With this
+repo in scope, `log failure` appends → Auditor-approves → commits + pushes the SSOT git file. Never
+claim a write happened if it didn't (FL-cf046).
 
 ## Hard guardrails (do not break)
-- No hooks, no config, no deps — pure skills (portability is the point).
+- No build, no deps — installs as a plain skills tree; orchestration uses subagents (Claude Code / VS Code).
 - No personal data or external paths in any committed record — re-scan before commit.
 - Deterministic detectors before any LLM-judge (FL-cf051). The judge (Fable) is never the Do-er (Opus).

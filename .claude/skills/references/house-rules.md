@@ -25,6 +25,6 @@ rule here, not in each skill** (the anti-drift discipline — FL-cf001, FL-cf011
 10. **Keep the loops unleaked.** Prongs exchange typed artifacts only (`loop-contract.md`).
 
 ## Portability guardrails (do not break)
-- No hooks, no config files, no dependencies, no `uv`. Pure skills — claude.ai / Cowork cannot run the rest.
+- No build, no dependencies — installs as a plain skills tree. Orchestration uses subagents, so the runtime surface is Claude Code / VS Code.
 - Skills stay co-located; cross-references use `../` relative paths inside one `.claude/skills/` tree.
 - No external paths. If a change adds one, it is wrong.

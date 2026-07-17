@@ -1,6 +1,6 @@
 # Trident
 
-**A three-prong quality harness for AI work — portable, zero-dependency, install-anywhere.**
+**A three-prong quality harness for shipping features in Claude Code / VS Code — dependency-light, installs as skills.**
 
 Trident wraps any working session in three prongs that hold each other honest:
 
@@ -15,7 +15,7 @@ logged once, turned into a check that stops it recurring, and surfaced to you. W
 
 > Modeled on [Arize Phoenix](https://arize.com/docs/phoenix)'s eval shapes (trace → evaluate → curate
 > failures → iterate) so it's grounded in a real framework and forward-compatible with a live Phoenix
-> deployment — while staying pure-skill and running with zero setup in claude.ai, Cowork, and Claude Code.
+> deployment — while installing as a plain skills tree in Claude Code / VS Code (where its subagents run).
 
 ## Status
 **Skeleton for review.** The architecture is in [`ARCHITECTURE.md`](./ARCHITECTURE.md); skill files and

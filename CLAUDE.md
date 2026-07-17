@@ -1,8 +1,9 @@
 # CLAUDE.md — maintaining Trident
 
-Trident is a **portable, zero-dependency skill bundle**: a three-prong quality harness plus one
-failures-log SSOT. No build, no deps, no hooks. Everything needed to run, modify, and extend it lives
-in this repo. It runs in claude.ai / Cowork / Claude Code / VS Code with zero setup.
+Trident is a **dependency-light skill bundle for Claude Code / VS Code**: a three-prong quality harness
+plus one failures-log SSOT. No build, no deps. Everything needed to run, modify, and extend it lives in
+this repo. Its orchestration spawns real subagents, so the runtime surface is Claude Code / VS Code
+(not claude.ai / Cowork).
 
 ## What it is
 Three prongs watching any working session: a **Do-er** (Opus), **Simba** (loyal to the user, guards
@@ -44,7 +45,7 @@ Add a guard **only from a real observed failure**, never a hypothetical:
 The suite only ever grows from real errors.
 
 ## Hard guardrails (do not break)
-- **No hooks, no config, no deps.** claude.ai / Cowork cannot run them — keep it pure skills.
+- **No build, no deps.** Keep install trivial (a skills tree). Orchestration uses subagents — a Claude Code / VS Code capability; don't add machinery that assumes another surface.
 - **No personal data, no external paths in any committed record.** Re-scan before every commit —
   grep the working set for your home-dir prefix, private workspace names, and company names; block on any hit.
 - **Deterministic detectors before any LLM-judge.** The Auditor (Fable) is never the Do-er (Opus).
