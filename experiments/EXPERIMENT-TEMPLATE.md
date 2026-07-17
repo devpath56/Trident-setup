@@ -19,6 +19,10 @@ Job under test = **shipping a medium-complexity OSS feature.**
 ## Setup — measure the harness, not luck
 - **Identical task, identical Do-er model (Opus), identical tools, identical budget cap.** The only
   variable is the wrapper: bare Opus (**Arm A**) vs Opus-inside-Trident (**Arm B**).
+- **Entry point = real usage.** Arm B is started exactly as in VS Code: **`invoke trident`**, then the
+  problem statement + session intent — the trident skill drives the loop (Phase-0 gate → Do-er ⇄ Auditor,
+  Simba guarding intent). Arm A gets the *same* problem statement handed to a single plain Opus agent.
+  No experiment-specific scaffolding on either side.
 - **Blind, deterministic-anchored judge**: a model that produced neither arm scores the rubric without
   knowing which is which; the deterministic layers (tests, defect detectors) are computed mechanically
   first and the judge cannot override them (CF-010, CF-051).
