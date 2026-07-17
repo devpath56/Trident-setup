@@ -23,6 +23,16 @@ rule here, not in each skill** (the anti-drift discipline — FL-cf001, FL-cf011
 8. **Mounted ≠ executing.** A guard counts as coverage only once its heartbeat is verified (FL-cf034, FL-cf044).
 9. **No personal data in a committed record.** Re-scan before every commit (FL-cf013 blast-radius).
 10. **Keep the loops unleaked.** Prongs exchange typed artifacts only (`loop-contract.md`).
+11. **No borrowed "deterministic."** Don't call a verdict deterministic/mechanical/by-code without an
+    executed code artifact in the same turn; otherwise label it model/human judgment (CF-058).
+12. **No self-graded evals.** The grader model ≠ the subject model ≠ the fixture-author model; record all
+    three and fail closed if they collide — this applies to evaluations of Trident itself (CF-059).
+13. **No premature all-clear.** An eval yields "good/validated" only with hard-negative traps present, the
+    discriminator kept out of the subject's prompt, and a known-bad control that actually failed; otherwise
+    the verdict is "not-yet-validated," never "good" (CF-060, CF-061).
+
+> Rung note: 1 is enforceable by code; 11–13 are reminder/structural guards — they lower recurrence, they
+> do not make it impossible. A model can still read a rule and break it; only a wired-in check is a gate.
 
 ## Portability guardrails (do not break)
 - No build, no dependencies — installs as a plain skills tree. Orchestration uses subagents, so the runtime surface is Claude Code / VS Code.

@@ -51,6 +51,12 @@ Before the Do-er is allowed to build, the Auditor owns the feasibility half of t
 3. **LLM-judge (Fable), rubric-based only** — persona/intent drift, verbatim-quote fidelity (FL-cf052),
    anything the above can't reach. **Per-dimension scores, never a free-form verdict** (FL-cf010).
 
+- **Mechanizable-first within the order.** Classify each gold criterion as mechanizable (enum/field/
+  string/count) vs judgment; a code-based detector owns every mechanizable criterion's verdict *before*
+  the Fable judge runs on the residue — never let a judge stand as primary on a typed-field check (CF-061).
+- **Verdict provenance (no self-grading, extended to evals of Trident).** Record grader/subject/author
+  model ids on every `Verdict`; refuse to grade if grader == subject or grader == author (CF-059).
+
 ## Rules
 - **Fail closed.** No judge verdict (timeout/error) = do not pass (FL-cf049: a fail-open judge is not a guard).
 - **Approve new CF records** before they surface: well-formed against `schema.json`, detector is

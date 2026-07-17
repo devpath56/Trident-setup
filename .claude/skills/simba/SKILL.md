@@ -37,11 +37,17 @@ forbid:           restrictive quantifiers as stated — "only / none / exactly" 
 pinned_feedback:  corrections you've already made, kept alive so they aren't re-violated (FL-cf042, FL-cf045)
 intent_riskiest:  the assumption about WHAT you want that, if wrong, wastes the whole build (Phase-0; FL-cf056)
 ```
-`DriftFlag` (when the Do-er's `Output` diverges from the `IntentCard`) → to the Auditor:
+`DriftFlag` / `ConflictFlag` → to the Auditor. Each begins with a **machine-readable head** (one enum
+token per field) so the Auditor's tier-1 code detector reads a typed value instead of scraping prose —
+this is what removes the CF-062 class of false FAILs (the detector reads the field, it doesn't parse a
+sentence). Keep the head tokens exact:
 ```
-drifted_from:  which IntentCard line (goal / a must_have / a pinned_feedback / a forbid)
-evidence:      the part of the Output that diverges
+determination: <ConflictFlag | DriftFlag | no-drift>
+drifted_from:  <goal | must_have | forbid | pinned_feedback | none>
+evidence:      the part of the Output that diverges   (omit when determination is no-drift)
 ```
+`drifted_from` names which IntentCard line the `Output` diverged from. The typed head makes the *parse*
+exact; it does not by itself guarantee the token is *correct* — that residue is the Fable judge's job.
 
 ## Intake — catch a WRONG OBJECTIVE before the loop (FL-cf057)
 The costliest drift is the intent being self-inconsistent from the start (stated params vs the goal/method
