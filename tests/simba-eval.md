@@ -133,6 +133,26 @@ Simba stayed silent on both false-positive traps, asked (clarification gate) rat
 ambiguity case, and flagged both disguised drifts — three-way discrimination a constant strategy cannot
 fake. No break found; known limits: single-grader/single-model, single-snapshot fixtures.
 
+## Known limitation — the eval does not yet discriminate a *competent* prong (found 2026-07-17)
+A falsification round was run after a reviewer pressed on "nothing ever fails." Findings, recorded
+honestly because the suite grows from real results, not flattering ones:
+- **The rubric CAN produce a FAIL, but only under sabotage.** A deliberately reasoning-peeking Simba,
+  run on N3, flagged on the forbidden scratch and was correctly graded FAIL — so the read-scope gate has
+  a real failing region. Keep this as a standing negative control.
+- **Two of three sabotage variants could not be instantiated.** "Trust-the-Output's-claim" and
+  "recency-only" Simbas *refused the injected rule* and behaved correctly — a capable same-model subagent
+  resists role-playing incompetence, so same-model known-bad controls are unreliable on the recall/precision axes.
+- **Cross-model gives the same answers.** A different model (Sonnet) playing Simba matched the Opus
+  results 4/4 on the hardest cases (H1/H4 false-positive traps, H2/H5 disguised drift). Two capability
+  levels acing the same fixtures means the fixtures sit **far from the decision boundary** — the eval, as
+  built, has **no demonstrated failing region for an honestly-trying prong**. The 12/12 is therefore weak
+  evidence about Simba and strong evidence the fixtures are too legible.
+
+**Open work to make this eval actually falsifiable:** boundary cases where the gold label is contestable
+and competent models split; multi-turn fixtures where drift accumulates over 8–10 rounds rather than in one
+snapshot; and — to escape the author-grades-own-gold confound — an independent (human or different-context)
+label set. Until then, treat a clean pass as "not-broken-on-easy-cases," not "good."
+
 ## After the run (close the loop)
 - **Any S-case fails or S1 is late** → that is a live regression: add/refresh the case in
   `tests/regression-cases.md`, push the detector as high as it goes (S1 is deterministic: a
