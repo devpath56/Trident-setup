@@ -58,6 +58,12 @@ The winner + a **build plan** mapping each **sponsor tool → feature → resume
 **Output format:** deliver as a **concise visual artifact (< 200 words)** — nested bullets, tables, and a
 small theme-aware infographic — not a prose wall. Every checkpoint/leaderboard uses the same format.
 
+**Per-anchor + decision set:** for the top-N anchors, emit **one artifact per person** — their best idea
+(loop diagram · sponsor→feature→skill · anchor→referral) **plus a `🎯 Target intel` block** (role/reach ·
+the authored artifact to build on · background · how to approach · affinity, with honesty flags on any
+`unverified-fetch` item) — **plus one comparison artifact** (head-to-head table + a "pick this if…" guide)
+so the user chooses.
+
 ## Honest-scoring guardrails (learned the hard way)
 - **Independent audit beats self-score.** A self-scoring agent inflates ~15–20 pts (double-counts name-dropped
   sponsors) and will declare a false ≥85. Have a *different* model re-score; **fail closed** on any claim you

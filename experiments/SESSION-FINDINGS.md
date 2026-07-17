@@ -133,3 +133,19 @@ harness should close.
 - **Discipline lapse:** skipped the todolist until the user called it out ("are you following tightly scoped
   loops with todolist") — a live instance of the very context-degradation Trident targets (CF-009).
 - **No-op recurrence (CF-033/050):** emitted "No response requested" once after an interrupt.
+
+## F · User-recommended updates (to ship into the pipeline + Trident)
+
+Logged from the user's own direction this session — the durable improvements:
+1. **Output = concise visual artifacts.** Every deliverable/checkpoint as a **< 200-word artifact** —
+   nested bullets, tables, theme-aware infographic — not prose. (→ auto-research Phase 3.)
+2. **Per-anchor artifacts + a decision comparison.** For the top-N anchors, emit ONE artifact per person
+   (their best idea) PLUS one comparison artifact so the user can decide. (→ Phase 3.)
+3. **Deep target intel in every idea artifact.** Each per-anchor artifact briefs the *person*: role/reach ·
+   the specific authored artifact to build on · background · how to approach · affinity — not just the idea.
+4. **People-first, incl. mentors + hosts, not only judges.** Anchor pool = judges + mentors + hosts. (→ Phase 1.)
+5. **Affinity heuristic** (shared IIT/Berkeley/Indian/women-in-tech → warm intro) on publicly-stated
+   affiliations only; never infer from a name (CF-004/CF-018). (→ Phase 1.)
+6. **Simba/Fable objective-conflict design (FL-cf057):** Simba intake conflict-diff + round-1 preview;
+   Fable goal-back-translation + reads the failures log to anticipate this task's CF modes and prime Simba.
+   (Implemented in the SKILL contracts.)
