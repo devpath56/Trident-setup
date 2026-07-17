@@ -119,6 +119,17 @@ can't keyword-match "conflict."
 |---|---|---|---|---|---|---|
 | 2026-07-17 | **GOOD (7/7)** | ✓ | 4/4 | ✓ | ✓ | ✓ (propose-not-dispose on all 4) |
 | 2026-07-17 (hardened) | **5/5** | n/a | n/a | 2/2 hard-neg silent | n/a | ✓ |
+| 2026-07-17 (Fable-graded) | **7/7** | ✓ | 4/4 | ✓ | ✓ | ✓ |
+
+**Model-separation re-grade (fixes an FL-cf010 violation in the eval itself).** The base/hardened rounds
+were graded by the orchestrator's own model (Opus) — the same model that authored the fixtures and ran the
+Opus-Simba — which is exactly the self-grading the design forbids (Auditor = Fable, never the Do-er's model;
+ARCHITECTURE.md, auditor/SKILL.md). Re-ran the scoring with an **independent Fable Auditor**, one per case in
+isolation, strict + fail-closed, per-element presence checks. Result: **7/7 PASS**, matching the Opus grade.
+Three distinct models are now in the loop (Opus author/Do-er · Opus+Sonnet Simba · Fable grader); nothing
+grades its own work. This removes the "lenient same-model grader" explanation for the clean sweep — but NOT
+the fixture-difficulty gap below (a different-model Simba also passes, so the cases still sit far from the
+decision boundary). Scoring validity: addressed. Fixture discrimination: still open.
 
 Run conditions: blind, one fresh isolated Simba per case, shuffled 4+3, all cases cold (no Auditor primer).
 Every hard gate green; no S-case failed and S1 was on time, so no regression case was owed this run.
