@@ -69,4 +69,10 @@ PASS:     the detector extracts the first-stated token (a parenthetical secondar
 FAIL:     the detector's verdict flips on a non-primary token (a false FAIL from field precedence)
 detector: deterministic (first-stated-token extraction; enum-field conformance)
 
+### RC-CF-063 — effect owning timers listed render-state in deps
+trigger:  a React effect installs timers/subscriptions/an exposed run API and lists changing render state (e.g. a state-machine phase) in its deps
+PASS:     the exposed async interaction/measure call drives to terminal state and resolves within a bounded timeout
+FAIL:     the interaction/measure promise never settles (times out) after a state transition — cleanup cancelled the in-flight timers
+detector: structural (timeout-bounded drive-to-terminal test)
+
 > TODO after approval: one case per remaining CF as the full log is migrated.
