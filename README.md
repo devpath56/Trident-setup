@@ -34,7 +34,7 @@ ARCHITECTURE.md              the design doc (read this first)
   trident/    SKILL.md        orchestrator + the `log failure` SSOT trigger
   auditor/    SKILL.md        Fable judge — deterministic evaluators first
   simba/      SKILL.md        your-intent guardian
-  references/                 method (the reusable method), house-rules, loop-contract, evaluators, phoenix-protocol, failures-log
+  references/                 method (the reusable method), experiment-method (how to prove a claim), house-rules, loop-contract, evaluators, phoenix-protocol, failures-log
 failures/
   failures.jsonl              the SSOT (sanitized, committed)
   schema.json                 record schema

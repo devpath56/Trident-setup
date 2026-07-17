@@ -85,10 +85,30 @@ pointed at a *different* master, and no prong can both do the work and bless it.
 
 ---
 
+## Managing an agent's context window (the context-contract)
+Each agent **rehydrates its window from typed artifacts** instead of accumulating a transcript: a **Frozen
+Packet** (run invariants, incl. the IntentCard, referenced by pointer not re-pasted), a **WorkingState**
+(the current artifact + pinned intent, rewritten each round), a **retrieval slice** (only the tag-relevant
+rows of the failures log / spans), and a **per-round prompt = packet-pointer + WorkingState + this round's
+delta**. Compaction is safe here **only because a different prong holds the invariants** — intent lives in
+Simba's IntentCard, re-asserted, never summarized.
+
+**Mandatory: the fail-closed invariant gate.** Before promoting any compacted WorkingState, run the
+invariant as an executable check; **block** if it doesn't hold. This is the guarantee, not the hope.
+
+**Honest status (RESULT-05, Fable-certified):** the contract is **proven safe and quality-preserving** and
+the gate works by construction (P2/P3/P4 passed); the pinned IntentCard even *strengthened* an invariant a
+full-history arm left as a gap. Its **efficiency payoff is conditional** — at 3 rounds with terse history the
+context cut was only 31% (missed the pre-registered 40%), because the carried artifact dominates. The win
+grows with round count and reasoning-heavy history; treat efficiency as open until re-run at 6+ rounds. Use
+the contract for **safety + intent-preservation** now; don't headline it as a token-savings win yet.
+
 ## The method in one line
 **Split the work into small bounded loops; in each, let an agent loyal to a different master try to break the
 result; and settle every dispute through one authority over one shared failures log** — so drift is caught
 early, optimism can't self-certify, and every real mistake becomes a permanent check.
 
-See also: `loop-contract.md` (the no-leak isolation that keeps loops small), `evaluators.md` (CF → check
-method), `phoenix-protocol.md` (the eval shapes), `house-rules.md` (the cross-cutting rules every prong obeys).
+See also: `experiment-method.md` (how to *prove* a claim before shipping it — pre-register, one variable,
+runnable ground truth, independent fail-closed audit), `loop-contract.md` (the no-leak isolation that keeps
+loops small), `evaluators.md` (CF → check method), `phoenix-protocol.md` (the eval shapes), `house-rules.md`
+(the cross-cutting rules every prong obeys).
