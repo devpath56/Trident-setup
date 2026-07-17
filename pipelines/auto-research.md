@@ -42,7 +42,8 @@ Score each 0–100 on four sub-scores, **weighted**:
 - **sponsor_fit (0.15):** load-bearing sponsor use; **double-win bonus** when the sponsor IS the anchor
   person's own company (anchor-fit and sponsor-fit align — the pattern that won this run).
 
-Loop mechanics (RAT-style, token-lean):
+Loop mechanics (RAT-style, token-lean) — this is the **scored generate → re-rank loop** from
+`../.claude/skills/references/method.md`; the mechanics live there, this pipeline supplies only the rubric above:
 1. **R1:** generate 6 ideas; score all; show the four sub-scores + one evidence line each; top-3 leaderboard
    with one-line loss reasons; log the rest to a **roads-not-taken** ledger (never silently drop).
 2. **R2+:** keep top-3; generate **3 new** biased toward the leader's strengths, **patching its weakest

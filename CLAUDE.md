@@ -18,8 +18,10 @@ intent), and an **Auditor** (Fable, deterministic evaluators first). They share 
   not in each skill.**
 - `.claude/skills/trident/SKILL.md` — the orchestrator + owner of the `log failure` trigger.
 - `.claude/skills/auditor/SKILL.md`, `.../simba/SKILL.md` — the two watcher prongs.
-- `.claude/skills/references/` — loop-contract (no-leak isolation), evaluators (CF→check method),
-  phoenix-protocol (the eval shapes borrowed from Arize Phoenix), failures-log (SSOT schema + protocol).
+- `.claude/skills/references/` — **method** (the reusable method: tightly-scoped loops · adversarial agents ·
+  incentive alignment, + the scored generate→re-rank primitive), loop-contract (no-leak isolation),
+  evaluators (CF→check method), phoenix-protocol (the eval shapes borrowed from Arize Phoenix),
+  failures-log (SSOT schema + protocol).
 - `failures/failures.jsonl` — the **SSOT**: one CF record per line. `schema.json` validates a record.
   `FAILURES.md` is a **generated** human view — never hand-edit it.
 - `tests/regression-cases.md` — one case per guard, each from a real observed failure.

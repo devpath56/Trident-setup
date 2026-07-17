@@ -5,6 +5,8 @@ description: Wrap a working session in a three-prong quality harness — a Do-er
 
 # trident — the orchestrator
 
+> The reusable method (tightly-scoped loops · adversarial agents · incentive alignment) + the scored
+> generate→re-rank primitive: `../references/method.md`.
 > Cross-cutting rules live in `../references/house-rules.md` — change them there, never here.
 > No-leak isolation: `../references/loop-contract.md`. Eval shapes: `../references/phoenix-protocol.md`.
 

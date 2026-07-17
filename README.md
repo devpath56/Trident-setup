@@ -13,6 +13,12 @@ Trident wraps any working session in three prongs that hold each other honest:
 The shaft that binds the three: a **failures log** — one JSONL source of truth. Every real mistake is
 logged once, turned into a check that stops it recurring, and surfaced to you. Work quality compounds.
 
+## The method (read this)
+Trident's reusable method, in [`.claude/skills/references/method.md`](./.claude/skills/references/method.md):
+**multiple tightly-scoped loops · adversarial agents · incentive alignment.** Split work into small bounded
+loops; in each, an agent loyal to a *different* master tries to break the result; every dispute is settled by
+one authority over one shared failures log. Everything else in this repo is an instance of that method.
+
 > Modeled on [Arize Phoenix](https://arize.com/docs/phoenix)'s eval shapes (trace → evaluate → curate
 > failures → iterate) so it's grounded in a real framework and forward-compatible with a live Phoenix
 > deployment — while installing as a plain skills tree in Claude Code / VS Code (where its subagents run).
@@ -28,7 +34,7 @@ ARCHITECTURE.md              the design doc (read this first)
   trident/    SKILL.md        orchestrator + the `log failure` SSOT trigger
   auditor/    SKILL.md        Fable judge — deterministic evaluators first
   simba/      SKILL.md        your-intent guardian
-  references/                 house-rules, loop-contract, evaluators, phoenix-protocol, failures-log
+  references/                 method (the reusable method), house-rules, loop-contract, evaluators, phoenix-protocol, failures-log
 failures/
   failures.jsonl              the SSOT (sanitized, committed)
   schema.json                 record schema

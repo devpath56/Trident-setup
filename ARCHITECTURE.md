@@ -40,6 +40,12 @@ The `failures.jsonl` SSOT *is* that growing suite. Each record carries a one-lin
 the intent-drift class. New failures get logged, approved by the Auditor, and surfaced to you — so
 work quality compounds instead of repeating the same mistakes.
 
+## The method (the reusable core)
+The three pillars behind everything below — **multiple tightly-scoped loops · adversarial agents ·
+incentive alignment** — are stated as one reusable method in `references/method.md`, including the
+weights-agnostic **scored generate → re-rank loop** primitive that pipelines instantiate. This section
+describes Trident's specific loop; `method.md` is the general form.
+
 ## The loop (tightly scoped, no leaks)
 Each prong runs its own loop with its **own todolist and its own isolated context**. "No leaks"
 is a hard contract (see `references/loop-contract.md`): a prong never sees another prong's scratch
