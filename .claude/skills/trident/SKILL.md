@@ -10,8 +10,12 @@ description: Wrap a working session in a three-prong quality harness — a Do-er
 > them there, never here.
 
 ## The loop (see `../references/loop-contract.md` for the no-leak isolation contract)
+0. **Phase 0 — riskiest-assumption gate (before ANY build).** Simba → `IntentCard` (incl. the
+   intent-riskiest assumption); Do-er → `AssumptionSet` (all capability/platform assumptions enumerated);
+   Auditor → `RATVerdict` (the single riskiest by kill-power × uncertainty + the cheapest falsifying probe);
+   Do-er runs the probe. **Hard block: no build until it passes.** On fail → stop, report, `log failure`.
 1. Spin up **Simba** (`../simba/SKILL.md`) → `IntentCard` from the user's messages only.
-2. Let the **Do-er** work; capture its `Spans` (`../references/phoenix-protocol.md`).
+2. Let the **Do-er** work (only past the Phase-0 gate); capture its `Spans` (`../references/phoenix-protocol.md`).
 3. Spin up the **Auditor** (`../auditor/SKILL.md`) → `Verdict` (deterministic → structural → judge).
 4. On fail: return the specific failing detector(s) to the Do-er; bounded retries.
    On Simba intent-drift flag: inject the IntentCard delta into the Auditor's next pass.

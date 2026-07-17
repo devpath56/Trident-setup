@@ -44,23 +44,43 @@ state — only the **typed artifacts** they exchange. This is deliberate — it 
 context-degradation and instruction-collision failures (FL-cf009, FL-cf011).
 
 ```
-1. SIMBA.read(user messages only)        → IntentCard         (what you actually asked for)
-2. DO-ER.work(task)                       → Output + Spans     (the attempt + its trace)
-3. AUDITOR.evaluate(Output, Spans,
+0. PHASE 0 — RISKIEST-ASSUMPTION GATE (before any build):
+   SIMBA.read(user messages only)        → IntentCard         (goal + the intent-riskiest assumption)
+   DO-ER.plan(task)                       → AssumptionSet      (approach + every capability assumption)
+   AUDITOR.rat(AssumptionSet, IntentCard) → RATVerdict         (the ONE riskiest + the cheapest probe)
+   DO-ER.probe(RATVerdict.probe)          → probe result       (a throwaway — minutes, not hours)
+   ══ HARD GATE: no build proceeds until the probe passes. On fail → STOP, report, log a CF. ══
+1. DO-ER.work(task)                       → Output + Spans     (only now — the real build begins)
+2. AUDITOR.evaluate(Output, Spans,
                     detectors, IntentCard) → Verdict           (deterministic first, judge second)
-4. if Verdict.fail → back to DO-ER with the specific failing detector(s)   (bounded retries)
-   if Simba flags intent-drift → inject the IntentCard delta into step 3
-5. on pass → surface to you. on a NEW failure mode → log it (SSOT), Auditor approves, you see it.
+3. if Verdict.fail → back to DO-ER with the specific failing detector(s)   (bounded retries)
+   if Simba flags intent-drift → inject the IntentCard delta into step 2
+4. on pass → surface to you. on a NEW failure mode → log it (SSOT), Auditor approves, you see it.
 ```
 
 Artifacts exchanged between prongs (the only things that cross a loop boundary):
 
 | Artifact | Producer | Consumer | Shape |
 |---|---|---|---|
-| `IntentCard` | Simba | Auditor | user-goal, must-haves, forbid-list, drift-signals |
+| `IntentCard` | Simba | Auditor | user-goal, must-haves, forbid-list, drift-signals, **intent-riskiest assumption** |
+| `AssumptionSet` | Do-er | Auditor | every assumption the plan rests on, each tagged type + kill-power + uncertainty |
+| `RATVerdict` | Auditor | Do-er | the single riskiest assumption + the cheapest falsifying probe + the hard gate |
 | `Spans` | Do-er | Auditor | Phoenix/OpenInference-shaped span list (see below) |
 | `Verdict` | Auditor | Do-er / you | per-detector pass/fail + the FAIL signature |
 | `CF record` | any prong | SSOT | one `failures.jsonl` line (schema below) |
+
+## Riskiest-assumption gate (Phase 0) — the "don't-waste-hours" rule
+The single most expensive failure class is building something that was never possible. So **no build
+of any kind starts until the riskiest assumption is proven by a cheap probe** (hard block, always):
+- **Do-er** enumerates the plan's assumptions — it may not skip the capability/platform/connector ones.
+- **Auditor (Fable)** owns the *feasibility* gate: it ranks assumptions by **kill-power × uncertainty**,
+  names the single riskiest, and specifies the **cheapest falsifying probe** — the smallest experiment
+  that could prove the approach impossible (one throwaway connector call, one capability query, one doc read).
+- **Simba** owns the *intent* gate in parallel: is this even the goal? (It can't judge feasibility — its
+  context is your messages only — so the two owners are complementary, not redundant.)
+- **Do-er** runs the probe; the **Auditor** holds pass/fail. Build is blocked until it passes.
+- On probe fail → **stop, report, and log a CF.** Minutes spent, not hours. This directly guards
+  FL-cf044 (built on an unverified platform capability) and FL-cf039 (designed on an unprobed connector op).
 
 ## The Auditor — deterministic-first, Fable-judged
 Ordering is fixed and non-negotiable (FL-cf051 is itself a guard here):

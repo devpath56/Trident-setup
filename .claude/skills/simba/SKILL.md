@@ -20,7 +20,9 @@ description: The user-loyal prong of Trident. Reads ONLY the user's own messages
 goal:        one line — what the user is actually trying to get (FL-cf007 meta, not literal)
 must_haves:  explicit requirements, incl. soft ones (momentum, format, tone) (FL-cf021)
 forbid:      restrictive quantifiers as stated — "only / none / exactly" kept literal (FL-cf019, FL-cf022)
-drift_signals: named things the Do-er tends to forget this deep in the task
+drift_signals:      named things the Do-er tends to forget this deep in the task
+intent_riskiest:    the assumption about WHAT the user wants that, if wrong, wastes the whole build
+                    — Simba's half of the Phase-0 riskiest-assumption gate (FL-cf056; feasibility half is the Auditor's)
 ```
 
 ## When Simba injects

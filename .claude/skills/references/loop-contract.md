@@ -8,9 +8,15 @@ instruction sets blend.
 ## Isolation boundaries
 | Prong | Sees | Never sees | Owns |
 |---|---|---|---|
-| Simba | user messages only | Do-er work, Auditor scratch | `IntentCard`, its own todolist |
-| Do-er | the task + failing detectors fed back | Simba's raw notes, Auditor rubric internals | `Output`, `Spans`, its own todolist |
-| Auditor | `Output`, `Spans`, detectors, `IntentCard` | Do-er's chain-of-thought scratch | `Verdict`, CF approvals, its own todolist |
+| Simba | user messages only | Do-er work, Auditor scratch | `IntentCard` (incl. intent-riskiest), its own todolist |
+| Do-er | the task + failing detectors + `RATVerdict.probe` | Simba's raw notes, Auditor rubric internals | `AssumptionSet`, `Output`, `Spans`, its own todolist |
+| Auditor | `AssumptionSet`, `IntentCard`, `Output`, `Spans`, detectors | Do-er's chain-of-thought scratch | `RATVerdict`, `Verdict`, CF approvals, its own todolist |
+
+## Phase 0 crosses the same boundaries
+The riskiest-assumption gate reuses the isolation rules, not a shortcut around them: the Do-er hands the
+Auditor a typed `AssumptionSet` (never its raw reasoning), the Auditor returns a typed `RATVerdict`
+(the riskiest assumption + the cheapest probe), and Simba's intent-riskiest rides in the `IntentCard`.
+The gate is a phase, not a new channel — so it can't become a leak.
 
 ## Why a shared context would break it
 - If Simba read the Do-er's reasoning, it could be argued out of the user's intent (loses loyalty).

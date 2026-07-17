@@ -4,7 +4,7 @@
 > Generated from `failures.jsonl` (or the `log failure` trigger). Hand-edits are overwritten.
 > Full pattern, enterprise environments, PM implication, and trace live in each JSONL record.
 
-## Index (55 records)
+## Index (56 records)
 
 | CF | Title | Tags | Status | Detector | Guard |
 |----|-------|------|--------|----------|-------|
@@ -63,3 +63,4 @@
 | CF-053 | Executed setup when asked to be walked throug… | instruction-following, permission-model, context-degradation | recurred | structural | On 'understand/explain/walk me through/step by step', mode=EXPLAIN: deliver the per-ste… |
 | CF-054 | Answered a project-defined term with the gene… | context-degradation, instruction-following | guarded | structural | Before resolving a project-ambiguous term, check whether loaded project context defines… |
 | CF-055 | Shipped a platform-native bundle for an unkno… | tool-use, context-degradation | guarded | structural | For deliverables bound to external/unknown environments ('for my friend', 'portable'), … |
+| CF-056 | Started a build before testing the riskiest (… | tool-use, pattern-cargo-culting, permission-model | guarded | structural | Before any build, the Auditor names the single riskiest assumption (kill-power x uncert… |

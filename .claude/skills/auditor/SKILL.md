@@ -12,6 +12,16 @@ description: The Fable-model judge prong of Trident. Evaluates the Do-er's outpu
 - In: `Output`, `Spans` (Do-er), the active **detectors** (from `failures/failures.jsonl`), `IntentCard` (Simba).
 - Out: `Verdict` = `{ detector_id, pass|fail, signal_seen }[]` + one rubric block if a judge ran.
 
+## Phase 0 — the feasibility RAT gate (runs BEFORE any build; FL-cf056)
+Before the Do-er is allowed to build, the Auditor owns the feasibility half of the riskiest-assumption test:
+- In: `AssumptionSet` (Do-er), `IntentCard` (Simba).
+- Rank assumptions by **kill-power × uncertainty**; name the single riskiest.
+- Emit `RATVerdict` = `{ riskiest_assumption, cheapest_probe, gate: "hard" }` — the smallest experiment
+  that could prove the approach impossible (one throwaway connector call / capability query / doc read).
+- The Do-er runs the probe; the Auditor holds pass/fail. **Build is blocked until it passes.**
+- On probe fail → the loop STOPS: report to the user, `log failure`. Never enter the hours-long build.
+- This is deterministic-first: the gate is structural, not a judgment call (FL-cf051).
+
 ## Evaluation order (fixed — FL-cf051)
 1. **Deterministic detectors** — grep/string/structural checks (e.g. FL-cf047 cross-artifact grep;
    FL-cf026 emit-time no-op check; FL-cf046 narrated-vs-executed diff). Cheapest, most reliable.

@@ -4,6 +4,10 @@ Every skill (`trident`, `auditor`, `simba`) points here for shared rules. **Chan
 rule here, not in each skill** (the anti-drift discipline — FL-cf001, FL-cf011).
 
 ## The invariants (each traces to a real failure)
+0. **Riskiest assumption first (hard block).** No build of any kind starts until the single riskiest
+   assumption — ranked by kill-power × uncertainty — is proven by the cheapest falsifying probe. The
+   Auditor (Fable) owns the feasibility gate; Simba owns the intent gate; the Do-er runs the probe but
+   never self-approves. On probe fail → stop, report, log a CF (FL-cf056, FL-cf044, FL-cf039).
 1. **Deterministic first.** Any guard is enforced by the highest-reliability detector available:
    deterministic root-cause > deterministic detection > LLM-judge > written reminder (FL-cf051).
 2. **Never no-op a non-empty user message.** Emit-time gate; execute the bound action or say in one

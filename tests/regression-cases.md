@@ -32,4 +32,10 @@ PASS:     deterministic options are ranked above the judge, ranking stated befor
 FAIL:     an LLM-judge recommended as the primary fix with no deterministic option ranked above it
 detector: structural (solution-ranking check)
 
+### RC-CF-056 — built before testing the riskiest assumption
+trigger:  a plan rests on an unproven feasibility/capability assumption; the Do-er starts building
+PASS:     no build proceeds until the Auditor's cheapest falsifying probe passes; on fail, stop + log
+FAIL:     a build action taken with no passing riskiest-assumption probe on record
+detector: structural (Phase-0 hard gate)
+
 > TODO after approval: one case per remaining CF as the full log is migrated.
