@@ -73,6 +73,21 @@ the authored artifact to build on · background · how to approach · affinity, 
 `unverified-fetch` item) — **plus one comparison artifact** (head-to-head table + a "pick this if…" guide)
 so the user chooses.
 
+**Preferred single deliverable — the drill-down:** collapse the whole decision into **one self-contained
+clickable HTML** with three levels: **targets (ranked, with rubric-why + a unique insight + authored work)
+→ click a target to expand its ideas (1 audited best + 2 alternates, ranked) → click an idea for its
+details + the PM⇄Engineer dual-track build plan.** Native nested `<details>`, data-driven render, no
+external assets (CSP-safe). Audited ideas carry a `✓ audited` badge; fresh ideas a `fresh, unaudited`
+badge; keep the honesty flags. Worked example: `examples/loophack-drilldown.html`.
+
+**Design taste — apply the `taste-skill`** (anti-slop frontend rules, github.com/leonxlnx/taste-skill,
+`skills/taste-skill/SKILL.md`). Non-negotiables that bit us: **zero em-dashes anywhere**, **no scoring
+bars with filled background tracks** (use monospace numeric readouts), **no section-number eyebrows**,
+one dominant accent, off-white/off-black tokens (never `#000`/`#fff`), avoid Inter as default, theme-lock
+one mode, and run its **pre-flight checklist** before publishing. If a brand is named (e.g. GrowthX:
+cream `#F1EEE9` · ink `#080A0D` · yellow `#FFE57B` accent · pink `#FFC3D6` semantic), use that palette
+deliberately and say so in a comment.
+
 ## Hands-free readiness — gated autonomy, not full
 The pipeline runs itself between **three unavoidable human touchpoints** — everything else (research,
 ideation, scoring, all artifacts, the dual-track build plan) runs unattended to "artifact set complete":

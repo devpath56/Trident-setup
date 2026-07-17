@@ -1,0 +1,272 @@
+<title>Loophack · targets, ideas & build plans</title>
+<!-- taste-skill applied. Design read: decision dashboard for a technical founder, warm-editorial GrowthX
+     brand (cream/ink, yellow accent, pink = semantic only). Dials: VARIANCE 4 / MOTION 2 / DENSITY 8.
+     Brand palette (GrowthX) used deliberately per the brief; single dominant accent = yellow. No em-dashes.
+     No filled-track score bars. No section-number eyebrows. Off-white/off-black tokens. -->
+<style>
+:root{
+  --paper:#F1EEE9;--card:#FBF9F5;--secondary:#E9E5DF;--ink:#080A0D;--muted:#6d6a62;--faint:#8f8a80;
+  --line:#ddd8d0;--line2:#c8c3b9;--accent:#FFE57B;--accent-deep:#E7C63f;--pink:#FFC3D6;--pinkink:#8f3f58;
+  --onaccent:#141110;
+  --sh:0 1px 2px rgba(8,10,13,.05),0 12px 34px rgba(8,10,13,.06);
+  --sans:"Helvetica Neue",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  --paper:#14110D;--card:#1C1813;--secondary:#241F19;--ink:#F3EEE7;--muted:#9a938a;--faint:#7c766c;
+  --line:#332d25;--line2:#463d33;--accent:#E9D26F;--accent-deep:#E9D26F;--pink:#E9A7BD;--pinkink:#E9A7BD;
+  --sh:0 1px 2px rgba(0,0,0,.35),0 14px 34px rgba(0,0,0,.34);
+}}
+:root[data-theme="light"]{--paper:#F1EEE9;--card:#FBF9F5;--secondary:#E9E5DF;--ink:#080A0D;--muted:#6d6a62;--faint:#8f8a80;--line:#ddd8d0;--line2:#c8c3b9;--accent:#FFE57B;--accent-deep:#E7C63f;--pink:#FFC3D6;--pinkink:#8f3f58;--onaccent:#141110;--sh:0 1px 2px rgba(8,10,13,.05),0 12px 34px rgba(8,10,13,.06)}
+:root[data-theme="dark"]{--paper:#14110D;--card:#1C1813;--secondary:#241F19;--ink:#F3EEE7;--muted:#9a938a;--faint:#7c766c;--line:#332d25;--line2:#463d33;--accent:#E9D26F;--accent-deep:#E9D26F;--pink:#E9A7BD;--pinkink:#E9A7BD;--onaccent:#141110;--sh:0 1px 2px rgba(0,0,0,.35),0 14px 34px rgba(0,0,0,.34)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-weight:450;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px 72px}
+/* hero: max 4 elements, fits viewport, pt <= 6rem */
+.hero{padding:56px 0 22px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{font-size:clamp(32px,6.4vw,56px);line-height:1.04;letter-spacing:-.03em;margin:.18em 0 .16em;font-weight:680;padding-bottom:.02em}
+.lede{color:var(--muted);font-size:17px;max-width:56ch;margin:0}
+/* meta strip (moved out of hero) */
+.meta{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:16px 0 4px;border-top:1px solid var(--line2)}
+.how{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+.how b{color:var(--pinkink);font-weight:600}
+.rubric{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.rubric b{color:var(--muted)}
+h2.sec{font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--muted);margin:34px 2px 12px}
+/* accordion cards (elevation communicates hierarchy) */
+details{border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--sh);margin-top:12px;overflow:hidden}
+details[open]{border-color:var(--line2)}
+summary{list-style:none;cursor:pointer;padding:17px 18px;display:flex;gap:14px;align-items:flex-start}
+summary::-webkit-details-marker{display:none}
+.rank{font-family:var(--mono);font-weight:700;font-size:14px;background:var(--accent);color:var(--onaccent);border-radius:11px;min-width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin-top:1px}
+.thead{flex:1;min-width:0}
+.tname{font-size:20px;font-weight:680;letter-spacing:-.012em;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.trole{font-family:var(--mono);font-size:11.5px;color:var(--muted);font-weight:500}
+.tscore{font-family:var(--mono);font-size:12px;color:var(--ink);border:1px solid var(--line2);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.twhy{color:var(--muted);font-size:13.5px;margin:7px 0 0;max-width:70ch}
+.chev{flex:0 0 auto;color:var(--faint);transition:transform .18s ease;margin-top:5px;font-size:13px}
+details[open] .chev{transform:rotate(90deg)}
+.tbody{padding:4px 18px 20px;border-top:1px solid var(--line)}
+.sub{font-size:12.5px;font-weight:600;color:var(--muted);margin:18px 0 9px}
+.insight{background:color-mix(in srgb,var(--pink) 24%,transparent);border:1px solid color-mix(in srgb,var(--pink) 52%,var(--line));border-radius:12px;padding:12px 14px;font-size:13.5px;margin:16px 0 2px;line-height:1.5}
+.insight b{color:var(--pinkink)}
+.works{display:grid;gap:8px}
+.work{border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:var(--paper);font-size:13px}
+.work b{color:var(--ink)}.work span{color:var(--muted);display:block;font-size:12px;margin-top:2px}
+/* intel as borderless definition grid (not border-on-every-row) */
+.intel{display:grid;grid-template-columns:112px 1fr;gap:8px 14px;font-size:12.9px}
+.intel dt{font-family:var(--mono);color:var(--muted)}
+.intel dd{margin:0}.intel b{color:var(--ink)}
+/* nested idea accordion */
+.idea{border:1px solid var(--line);border-radius:13px;margin-top:9px;box-shadow:none;background:var(--paper)}
+.idea[open]{background:var(--card)}
+.idea>summary{padding:13px 14px;gap:11px}
+.isum{flex:1;min-width:0}
+.iname{font-size:15.5px;font-weight:680;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:999px;white-space:nowrap;font-weight:600}
+.b-score{background:var(--accent);color:var(--onaccent)}
+.b-aud{border:1px solid var(--line2);color:var(--muted)}
+.b-fresh{background:color-mix(in srgb,var(--pink) 42%,transparent);color:var(--pinkink);border:1px solid color-mix(in srgb,var(--pink) 58%,var(--line))}
+.ipitch{color:var(--muted);font-size:12.8px;margin:6px 0 0}
+.ibody{padding:2px 15px 16px;border-top:1px solid var(--line)}
+.panel{font-size:12.5px;font-weight:600;color:var(--ink);margin:16px 0 10px}
+.panel .of{color:var(--faint);font-weight:450;font-family:var(--mono);font-size:11px}
+/* loop (semantic process flow, not feature cards) */
+.loop{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.node{flex:1 1 76px;border:1px solid var(--line2);border-radius:10px;padding:8px 6px;text-align:center;background:var(--card);font-size:11.5px;font-weight:600}
+.node.k{background:var(--accent);border-color:var(--accent);color:var(--onaccent)}
+.arw{color:var(--pinkink);font-weight:800;font-size:13px}
+/* scores: monospace readout, NO filled tracks */
+.scores{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:13px}
+.sc{border:1px solid var(--line);border-radius:10px;padding:9px 6px;text-align:center;background:var(--paper)}
+.sc .scn{font-family:var(--mono);font-size:18px;font-weight:700;display:block;letter-spacing:-.02em}
+.sc .scl{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);display:block;margin-top:2px}
+.sc.tot{background:var(--accent);border-color:var(--accent)}
+.sc.tot .scn,.sc.tot .scl{color:var(--onaccent)}
+.risk{color:var(--pinkink);font-size:12.4px;margin:12px 0 0;padding:9px 11px;border:1px solid color-mix(in srgb,var(--pink) 55%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--pink) 12%,transparent)}
+/* swimlane schedule */
+.scroll{overflow-x:auto}
+.lane{border-collapse:collapse;width:100%;font-size:11.8px;min-width:600px}
+.lane th{text-align:left;padding:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;color:var(--faint);border-bottom:1px solid var(--line2);font-weight:600}
+.lane th.eng{color:var(--accent-deep)}.lane th.pm{color:var(--pinkink)}
+.lane td{text-align:left;padding:8px;vertical-align:top;background:transparent}
+.lane tr:nth-child(even) td{background:color-mix(in srgb,var(--secondary) 45%,transparent)}
+.lane td.t{font-family:var(--mono);color:var(--muted);white-space:nowrap}
+.lane td.eng{border-left:2px solid var(--accent)}
+.lane td.pm{border-left:2px solid var(--pink)}
+.lane td.s{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.lane td.s b{color:var(--pinkink);font-weight:700}
+.rule{margin-top:11px;font-size:12.5px;background:var(--secondary);border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+.rule b{color:var(--ink)}
+/* stubs: grid, not a long bordered list */
+.stubs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px}
+.stub{border:1px dashed var(--line2);border-radius:11px;padding:11px 13px;color:var(--faint);font-size:12.5px;display:flex;align-items:center;gap:10px}
+.stub .sn{font-family:var(--mono);font-weight:700;color:var(--muted)}
+.stub b{color:var(--muted);font-weight:600}
+.stub .lk{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.foot{color:var(--faint);font-size:12px;margin-top:30px;line-height:1.6;font-family:var(--mono)}
+.foot b{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
+@media(max-width:560px){.scores{grid-template-columns:repeat(3,1fr)}.intel{grid-template-columns:96px 1fr}}
+</style>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">🔱 Loophack · people-first research</div>
+    <h1>Who to build for, what to build, how.</h1>
+    <p class="lede">Four anchors ranked by the audited rubric. Open a person, then an idea.</p>
+  </header>
+  <div class="meta">
+    <span class="how">Click a <b>person</b> → open an <b>idea</b> → see <b>details + build plan</b>.</span>
+    <span class="rubric">rubric &nbsp;anchor <b>.35</b> &nbsp;skill <b>.30</b> &nbsp;feasibility <b>.20</b> &nbsp;sponsor <b>.15</b></span>
+  </div>
+  <h2 class="sec">Targets, ranked</h2>
+  <div id="targets"></div>
+  <h2 class="sec">Anchors not yet researched</h2>
+  <div class="stubs" id="stubs"></div>
+  <p class="foot">Audited ideas scored by an independent Fable auditor (fail-closed). Alternates marked <b>fresh, unaudited</b>. Anchor intel tagged where <b>unverified-fetch</b>. Honest ceiling around 82; no faked 85+.</p>
+</div>
+<script>
+const rubric=(s)=>+(0.35*s.anchor+0.30*s.skill+0.20*s.feas+0.15*s.sponsor).toFixed(1);
+const swim=(d)=>[
+ ["0:00–0:30",`fork ${d.base}, get it running`,`freeze what works; pick 3 demo cases`,"kickoff"],
+ ["0:30–2:00",`wire ${d.gate}`,`build ${d.bench}; draft the referral pitch`,"core path works"],
+ ["2:00–3:30",`${d.fix} loop`,`score the loop vs acceptance; log obs metrics`,"self-corrects live"],
+ ["3:30–5:00",`harden edge cases + errors`,`eval edge cases; map features to resume skills`,"N cases pass"],
+ ["5:00–6:30",`polish demo path + canned fallback`,`write the 3-min demo script; rehearse approach`,"end-to-end runs"],
+ ["6:30–7:30",`freeze; demo-critical fixes only`,`final scorecard; approach ${d.target} with evidence`,"submit + pitch"],
+];
+const TARGETS=[
+{rank:1,name:"Nick Taylor",role:"Developer Advocate · Pomerium",best:82.2,
+ why:"Double-win: his own template AND his own sponsor. Most reachable of the 11 (a devrel paid to engage). Pick this for the safest win plus the easiest warm referral.",
+ insight:"The only anchor whose company is also a sponsor <b>and</b> who is professionally incentivised to respond. The double-win isn't just a scoring quirk; it's the lowest-friction human on the board.",
+ works:[
+  {t:"mcp-typescript-template (~54★)",d:"his starter repo. Fork it as your base."},
+  {t:"Talk: “Agentic Access: OAuth gets you in, Zero Trust keeps you safe”",d:"the thesis your build embodies"}],
+ intel:[["Role · reach","Pomerium's <b>first Developer Advocate</b>: a judge AND paid to engage; the most reachable of the 11."],
+  ["Background","Canadian. GitHub Star, Microsoft MVP, OSI maintainer. Ex-OpenSauced / dev.to / Netlify. Active streamer and speaker."],
+  ["Approach","Bring a live demo of <b>his own template</b> secured with Pomerium. Devrels love seeing their tools extended."],
+  ["Affinity","None (no IIT/Berkeley/Indian tie). Win on the tech plus the double-win."]],
+ ideas:[
+  {name:"ZeroTrustMCP",audited:true,pitch:"An MCP agent that can only call tools it's authorized for, and self-corrects when Pomerium denies one.",
+   loop:["Plan","Act","🔒 Gate","Observe","Correct"],kidx:2,sub:{anchor:90,skill:75,feas:72,sponsor:92},
+   risk:"Moderate skill signal (75): the reliability loop is the edge, not novel ML. Feasibility 72, so keep the gate scope tight.",
+   dt:{base:"Nick's mcp-typescript-template",gate:"a Pomerium allow/deny gate on every tool call",bench:"an allow/deny benchmark",fix:"deny then self-correct retry",target:"Nick"}},
+  {name:"PolicyLint",audited:false,pitch:"A dev tool that lints an MCP server's tool manifest against a Pomerium policy and flags over-scoped tools before runtime.",
+   loop:["Parse manifest","Check vs policy","Flag over-scope","Suggest fix"],kidx:2,sub:{anchor:75,skill:66,feas:80,sponsor:78},
+   risk:"Fresh, unaudited. Static-analysis angle, so a lower skill signal; strong feasibility and on-sponsor.",
+   dt:{base:"an MCP manifest + a Pomerium policy file",gate:"a static over-scope check",bench:"a set of over/under-scoped manifests",fix:"auto-suggest a tightened policy",target:"Nick"}},
+  {name:"AuthTrace",audited:false,pitch:"An observability view that traces every allow/deny across an agent session and surfaces why calls were blocked.",
+   loop:["Ingest decisions","Trace session","Cluster denies","Flag anomalies"],kidx:2,sub:{anchor:74,skill:64,feas:78,sponsor:76},
+   risk:"Fresh, unaudited. Observability-first; leans on Pomerium logs, so verify the decision-log format exists before committing.",
+   dt:{base:"Pomerium decision logs + an MCP session",gate:"trace ingest of every allow/deny",bench:"a session with known blocks",fix:"flag anomalous deny clusters",target:"Nick"}}]},
+
+{rank:2,name:"Alessandro Amenta",role:"Co-founder · tokens& (event host)",best:79.9,
+ why:"Not a judge, the host. Bonding with him buys the whole tokens& network plus repeat-event intros, not one vote. Highest skill-match of the four.",
+ insight:"He's the <b>host</b>, so the referral isn't a single judge's nod; it's an intro into the entire tokens& community and every future event. The lever is the network, not a prize.",
+ works:[
+  {t:"codeConvo (RAG-over-code)",d:"add the self-correct loop it lacks. Fork as base."},
+  {t:"RateIn · paperEmbeds · alfred",d:"his other repos: alternate anchors"}],
+ intel:[["Role · reach","<b>Co-founder, tokens&</b>: runs Loophack; your gateway to the community plus repeat-event referrals."],
+  ["Background","Economics (Denmark/US). Runs IRL AI hackathons SF/NYC/London. Medium @alessandroamenta1, X @ale_amenta. Splits SF/Amsterdam."],
+  ["Approach","Show his repo <b>leveled-up</b>, then ask for an intro into tokens&. His lever is the network, not a prize."],
+  ["Affinity","None verified. Lean on being a genuine community contributor."]],
+ ideas:[
+  {name:"codeConvo Loop",audited:true,pitch:"Fork his RAG-over-code app into an agent that scores its own answer's groundedness against the codebase and re-retrieves until retrieval is provably sufficient.",
+   loop:["Retrieve","Answer","Ground-check","Re-retrieve"],kidx:2,sub:{anchor:84,skill:92,feas:62,sponsor:70},
+   risk:"2023 OpenAI/Weaviate/LangChain stack (dependency rot) plus Nexla setup. Nexla isn't his company (no double-win).",
+   dt:{base:"his codeConvo RAG-over-code repo",gate:"a groundedness check (cited vs code)",bench:"a Q to expected-citation set",fix:"re-retrieve until grounded",target:"Alessandro"}},
+  {name:"paperEmbeds++",audited:false,pitch:"Extend his paperEmbeds into an agent that self-checks whether a retrieved paper actually supports a claim before citing it.",
+   loop:["Embed papers","Draft claim","Support-check","Re-rank"],kidx:2,sub:{anchor:80,skill:82,feas:60,sponsor:55},
+   risk:"Fresh, unaudited. Strong skill and anchor; thin sponsor tie and a heavier retrieval build (feas 60).",
+   dt:{base:"his paperEmbeds repo",gate:"a claim-to-paper support check",bench:"claims with known support/unsupport",fix:"re-embed or re-rank on weak support",target:"Alessandro"}},
+  {name:"alfred-eval",audited:false,pitch:"Wrap his alfred assistant with an eval harness that scores each response and regenerates anything below the bar.",
+   loop:["Ask","Answer","Score","Regenerate"],kidx:2,sub:{anchor:78,skill:80,feas:62,sponsor:52},
+   risk:"Fresh, unaudited. Clean eval story; sponsor tie weakest of the three, so pair it with a load-bearing sponsor.",
+   dt:{base:"his alfred assistant",gate:"a per-response eval score",bench:"a graded response set",fix:"regenerate below bar",target:"Alessandro"}}]},
+
+{rank:3,name:"Keir Lewis",role:"Product staff · Metaview (judge)",best:78.6,
+ why:"Tightest single-judge thesis match plus top skill signal. Pick this if you want thesis fidelity, sponsor be damned.",
+ insight:"His Feb-2026 blog <b>hit Hacker News</b> and he's already public about the exact benchmark-first methodology. You'd be validating his own published thesis to his face.",
+ works:[
+  {t:"Blog: “Improving React page performance with AI agents” (Metaview, Feb 2026)",d:"deterministic-benchmark-first. The idea IS his methodology."},
+  {t:"“Rook”, Metaview's busiest internal Slack agent",d:"the pattern behind an alternate"}],
+ intel:[["Role · reach","Product staff @ <b>Metaview / Fillmore</b>: a judge, and author of the exact thesis you'd build."],
+  ["Background","Cambridge BA Computer Science. Built “Rook,” reportedly Metaview's busiest internal Slack agent."],
+  ["Approach","Judges circulate late, so approach with <b>working evidence</b>, framed as “your methodology, validated on a real app.”"],
+  ["Affinity","None (Cambridge). Win on thesis fidelity."]],
+ ideas:[
+  {name:"BenchFirst",audited:true,pitch:"An agent that writes a deterministic benchmark first, then optimizes a slow React page and refuses to say done until it re-runs the benchmark and beats its own baseline.",
+   loop:["Benchmark","Optimize","Re-run","Beat baseline?"],kidx:0,sub:{anchor:88,skill:88,feas:68,sponsor:52},
+   risk:"Lighthouse determinism is noisy in 8 hrs. Metaview sponsor not load-bearing (52).",
+   dt:{base:"a slow React page",gate:"a Lighthouse baseline (built first)",bench:"the deterministic perf benchmark",fix:"optimize, re-run, beat baseline",target:"Keir"}},
+  {name:"RegressionGate",audited:false,pitch:"A CI agent that blocks a PR merge unless the agent-written perf benchmark still passes: his methodology as a git gate.",
+   loop:["Write benchmark","Run in CI","Compare baseline","Block / pass"],kidx:3,sub:{anchor:84,skill:82,feas:66,sponsor:50},
+   risk:"Fresh, unaudited. Great thesis extension; CI plumbing eats time and the sponsor tie is weak.",
+   dt:{base:"a repo + CI",gate:"the agent-written perf benchmark in CI",bench:"PRs that regress vs don't",fix:"block merge until benchmark passes",target:"Keir"}},
+  {name:"AgentRook",audited:false,pitch:"A Slack agent (echoing his “Rook”) that answers repo questions and self-verifies each answer against the codebase before replying.",
+   loop:["Ask in Slack","Retrieve","Verify vs code","Reply / recheck"],kidx:2,sub:{anchor:78,skill:76,feas:62,sponsor:46},
+   risk:"Fresh, unaudited. Nods to his own tool, but Slack integration and no strong sponsor drag the score.",
+   dt:{base:"a repo + Slack",gate:"an answer verified against code",bench:"repo Q&A with known answers",fix:"re-check before replying",target:"Keir"}}]},
+
+{rank:4,name:"Amey Desai",role:"CTO · Nexla (judge)",best:75.6,
+ why:"Sponsor double-win (Nexla is his company) plus max skill-hardening. Pick this if you can absorb the feasibility and anchor risk.",
+ insight:"A CTO judge, but the “thresholds” everyone quotes as his are generic <b>RAGAS defaults</b>. Cite RAGAS, not him, or the audit fails you closed (it cut anchor 91 to 65 for exactly this).",
+ works:[
+  {t:"SE Radio ep. on MCP · “Orchestrating Agentic AI at Scale”",d:"his real authored talks. Build near these."},
+  {t:"⚠ “his eval thresholds”",d:"unverified. Generic RAGAS defaults, not his. Do not cite as his."}],
+ intel:[["Role · reach","<b>CTO @ Nexla</b>: a judge; senior, so approach late with a crisp technical demo."],
+  ["Build on","His SE Radio MCP ep. plus agentic-RAG talks. <b>Do NOT cite “his thresholds”</b> (generic Ragas defaults; cite RAGAS generically)."],
+  ["Background","Publishes on MCP / agentic-RAG / multi-agent orchestration. Alma mater and location <b>unverified</b>."],
+  ["Affinity","Unverified. Do not assume a shared-background tie."]],
+ ideas:[
+  {name:"ThresholdRAG",audited:true,pitch:"An agentic-RAG loop that won't answer until it self-scores faithfulness>0.9, relevancy>0.85, context-precision>0.8, re-retrieving until the bar clears.",
+   loop:["Retrieve","Answer","Score (RAGAS)","Re-retrieve"],kidx:2,sub:{anchor:65,skill:92,feas:60,sponsor:88},
+   risk:"The “his thresholds” were unverified (generic Ragas defaults, so anchor cut 91 to 65). RAG plus tri-metric plus Nexla is more than one subsystem (feas 60).",
+   dt:{base:"a Nexla data pipeline",gate:"a RAGAS tri-metric answer gate",bench:"a Q to faithfulness/relevancy set",fix:"re-retrieve below bar",target:"Amey"}},
+  {name:"MCPBench",audited:false,pitch:"A benchmark harness that scores an MCP server's tool-calling reliability, echoing his SE Radio MCP talk.",
+   loop:["Define tasks","Call tools","Score reliability","Retry / repair"],kidx:2,sub:{anchor:66,skill:82,feas:64,sponsor:78},
+   risk:"Fresh, unaudited. Aligns with his MCP talk; anchor stays moderate since it's near, not on, his authored work.",
+   dt:{base:"a set of MCP servers",gate:"a tool-calling reliability score",bench:"tool-call tasks with known outcomes",fix:"retry or repair failed calls",target:"Amey"}},
+  {name:"PipelineRAG",audited:false,pitch:"An agent that uses Nexla to auto-build the retrieval pipeline, then self-scores freshness and rebuilds when it goes stale.",
+   loop:["Build pipeline","Retrieve","Freshness score","Rebuild if stale"],kidx:2,sub:{anchor:60,skill:78,feas:56,sponsor:84},
+   risk:"Fresh, unaudited. Strongest sponsor pull but the lowest anchor and feasibility: a lot of moving Nexla parts in 8 hrs.",
+   dt:{base:"Nexla connectors",gate:"a retrieval-freshness score",bench:"a stale-vs-fresh query set",fix:"rebuild the pipeline on stale",target:"Amey"}}]},
+];
+function ideaEl(idea){
+  const total=rubric(idea.sub);
+  const disp=idea.audited?total:"~"+Math.round(total);
+  const order=[["anchor",idea.sub.anchor],["skill",idea.sub.skill],["feas",idea.sub.feas],["sponsor",idea.sub.sponsor]];
+  const cells=order.map(([k,v])=>`<div class="sc"><span class="scn">${v}</span><span class="scl">${k}</span></div>`).join("");
+  const loop=idea.loop.map((n,i)=>`<div class="node${i===idea.kidx?' k':''}">${n}</div>`).join('<span class="arw">→</span>');
+  const rows=swim(idea.dt).map(r=>`<tr><td class="t">${r[0]}</td><td class="eng">${r[1]}</td><td class="pm">${r[2]}</td><td class="s"><b>✔</b> ${r[3]}</td></tr>`).join("");
+  const badge=idea.audited
+    ? `<span class="badge b-score">${total}</span><span class="badge b-aud">✓ audited</span>`
+    : `<span class="badge b-score">${disp}</span><span class="badge b-fresh">fresh, unaudited</span>`;
+  return `<details class="idea"><summary><div class="isum"><div class="iname">${idea.name} ${badge}</div><div class="ipitch">${idea.pitch}</div></div><span class="chev">▸</span></summary>
+  <div class="ibody">
+    <div class="panel">Idea details</div>
+    <div class="loop">${loop}</div>
+    <div class="scores">${cells}<div class="sc tot"><span class="scn">${disp}</span><span class="scl">weighted</span></div></div>
+    <div class="risk">⚠ ${idea.risk}</div>
+    <div class="panel">Build plan <span class="of">· PM ⇄ Engineer, one 8-hour day</span></div>
+    <div class="scroll"><table class="lane"><thead><tr><th>Time</th><th class="eng">🔧 Engineer, build the loop</th><th class="pm">📋 PM, eval + story (one slice ahead)</th><th>Sync ~90m</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="rule"><b>Why both stay busy:</b> the PM works one slice ahead on eval and narrative while the Engineer builds; at each sync <b>the PM's eval of the last slice is the Engineer's next input.</b></div>
+  </div></details>`;
+}
+function targetEl(t){
+  const works=t.works.map(w=>`<div class="work"><b>${w.t}</b><span>${w.d}</span></div>`).join("");
+  const intel=t.intel.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join("");
+  const ideas=t.ideas.map(ideaEl).join("");
+  return `<details class="target"><summary><span class="rank">${t.rank}</span><div class="thead"><div class="tname">${t.name} <span class="trole">${t.role}</span> <span class="tscore">best ${t.best}</span></div><div class="twhy">${t.why}</div></div><span class="chev">▸</span></summary>
+  <div class="tbody">
+    <div class="insight">💡 ${t.insight}</div>
+    <div class="sub">Authored work / talk</div><div class="works">${works}</div>
+    <div class="sub">🎯 Target intel</div><dl class="intel">${intel}</dl>
+    <div class="sub">Ideas, ranked (open one)</div>${ideas}
+  </div></details>`;
+}
+document.getElementById("targets").innerHTML=TARGETS.map(targetEl).join("");
+const STUBS=[["05","judge"],["06","judge"],["07","judge"],["08","mentor"],["09","mentor"],["10","host / partner"],["11","sponsor rep"]];
+document.getElementById("stubs").innerHTML=STUBS.map(s=>`<div class="stub"><span class="sn">${s[0]}</span><div>Anchor ${s[0]} · <b>${s[1]}</b></div><span class="lk">needs research</span></div>`).join("");
+</script>
