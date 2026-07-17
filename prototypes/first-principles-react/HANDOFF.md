@@ -7,8 +7,8 @@ Paste this whole file into a fresh **local** Claude Code session (or just open t
 at this file).
 
 ## What you're testing
-- **Repo:** `devpath56/trident-setup` (branch `main`, canonical) or `devpath56/learn-verify-kit`
-  (branch `claude/trident-repo-setup-4pz0jt`).
+- **Repo:** `https://github.com/devpath56/Trident-setup` (branch `main`, canonical, **public**) or
+  `devpath56/learn-verify-kit` (branch `claude/trident-repo-setup-4pz0jt`).
 - **Path:** `prototypes/first-principles-react/`
 - **What it is:** a Vite + React app with `<Agentation />` mounted and a stable `id` + `data-anchor` on
   every element, so an annotation's selector maps 1:1 to a source block.
@@ -21,15 +21,16 @@ at this file).
 ## Setup (once)
 1. Get the code:
    ```
-   git clone https://github.com/devpath56/trident-setup
-   cd trident-setup/prototypes/first-principles-react
+   git clone https://github.com/devpath56/Trident-setup
+   cd Trident-setup/prototypes/first-principles-react
    ```
    (existing clone: `git pull` instead)
 2. `npm install`
-3. Wire the MCP server. **Confirm the exact command at https://www.agentation.com/mcp first** (do not
-   trust a guessed one), then add to `~/.claude/settings.json`:
+3. Wire the MCP server. Command **verified against the npm registry** (`agentation-mcp` v1.2.0, bin
+   `dist/cli.js`, start script `node dist/cli.js server`). Add to `~/.claude/settings.json` (the `-y`
+   stops npx from hanging on a first-run prompt):
    ```json
-   { "mcpServers": { "agentation": { "command": "npx", "args": ["agentation-mcp", "server"] } } }
+   { "mcpServers": { "agentation": { "command": "npx", "args": ["-y", "agentation-mcp", "server"] } } }
    ```
    Or just run the **`/agentation`** skill in Claude Code, which wires this for you.
 4. Start the app: `npm run dev` -> http://localhost:5173
@@ -78,8 +79,8 @@ All four green = the hands-free autofetch loop works. Any miss = FAIL; note whic
 ## Honest caveats (do not skip)
 - Autofetch needs the widget, the MCP server, and Claude Code on the **same machine**. A remote/web
   Claude cannot reach it. This is a local-only test.
-- The remote session that built this did **not** run `npm install` or verify the exact MCP command;
-  verify both locally before trusting them.
+- The MCP command is verified against the npm registry (v1.2.0); the repo is confirmed public. The
+  remote session did **not** run `npm install` here, so surface any install error locally.
 - The static no-build page `../trident-first-principles.html` is the copy-paste fallback if the loop fails.
 
 ## Report back
