@@ -144,6 +144,21 @@ Simba stayed silent on both false-positive traps, asked (clarification gate) rat
 ambiguity case, and flagged both disguised drifts — three-way discrimination a constant strategy cannot
 fake. No break found; known limits: single-grader/single-model, single-snapshot fixtures.
 
+## Evaluation order correction — deterministic FIRST was missing (fixed 2026-07-17)
+The base/hardened/Fable rounds all scored with an **LLM-judge** (Opus, then Fable) — skipping rungs 1–2
+of the mandated ladder (auditor/SKILL.md; FL-cf051; and this file's own "score deterministically").
+Added `tests/simba_det_eval.py`, a **code-based tier-1 detector**: plain regex over each Simba output's
+typed `Determination` + `drifted_from` fields vs. the gold table, no model in the scoring loop, fail-closed.
+- Result: **7/7 deterministic PASS.**
+- The first deterministic run threw a **FAIL on S2** — investigated (read-before-assert) and it was a bug in
+  the *detector itself* (a fixed token-precedence grabbed "must_have" from a parenthetical instead of the
+  primary "goal"); Simba's field was correct. Fixed the extractor to take the first-stated token, re-ran → 7/7.
+  Kept as evidence the deterministic layer actually fires rather than rubber-stamps.
+- The Fable rubric-judge is now correctly **demoted to tier-2** (evidence quality, N3 read-scope) — what code
+  can't reach — not the primary gate.
+- Detector scope: verdict-type + drifted_from token + S1 intake marker. NOT evidence quality / boundary-respect
+  (tier-2). Latency is enforced by the fixtures (each presented only through its earliest-detectable round).
+
 ## Known limitation — the eval does not yet discriminate a *competent* prong (found 2026-07-17)
 A falsification round was run after a reviewer pressed on "nothing ever fails." Findings, recorded
 honestly because the suite grows from real results, not flattering ones:
