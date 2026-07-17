@@ -1,46 +1,75 @@
 ---
 name: trident
-description: Wrap a working session in a three-prong quality harness — a Do-er (Opus) watched by Simba (guards user intent) and an Auditor (Fable; deterministic evaluators first, LLM-judge second), all reading/writing one failures-log SSOT. Trigger on "run trident", "audit this work", "watch my intent on this", and — always — owns the normalized `log failure` trigger that appends the next CF-### to the SSOT. SKELETON — contract only; logic filled in after design approval.
+description: Wrap a working session in a three-prong quality harness — a Do-er (Opus) watched by Simba (durable intent memory + drift detector) and an Auditor (Fable; deterministic evaluators first, LLM-judge second), over one failures-log SSOT. Trigger on "invoke trident", "run trident", "audit this work"; and — always — owns the normalized "log failure" trigger that appends the next CF-### to the SSOT. Claude Code / VS Code only (spawns real subagents).
 ---
 
-# trident — the orchestrator (SKELETON)
+# trident — the orchestrator
 
-> This file states the loop and the triggers. Deep prose/logic is intentionally deferred until
-> `ARCHITECTURE.md` is approved. Cross-cutting rules live in `../references/house-rules.md` — change
-> them there, never here.
+> Cross-cutting rules live in `../references/house-rules.md` — change them there, never here.
+> No-leak isolation: `../references/loop-contract.md`. Eval shapes: `../references/phoenix-protocol.md`.
 
-## The loop (see `../references/loop-contract.md` for the no-leak isolation contract)
-0. **Phase 0 — riskiest-assumption gate (before ANY build).** Simba → `IntentCard` (incl. the
-   intent-riskiest assumption); Do-er → `AssumptionSet` (all capability/platform assumptions enumerated);
-   Auditor → `RATVerdict` (the single riskiest by kill-power × uncertainty + the cheapest falsifying probe);
-   Do-er runs the probe. **Hard block: no build until it passes.** On fail → stop, report, `log failure`.
-1. Spin up **Simba** (`../simba/SKILL.md`) → `IntentCard` from the user's messages only.
-2. Let the **Do-er** work (only past the Phase-0 gate); capture its `Spans` (`../references/phoenix-protocol.md`).
-3. Spin up the **Auditor** (`../auditor/SKILL.md`) → `Verdict` (deterministic → structural → judge).
-4. On fail: return the specific failing detector(s) to the Do-er; bounded retries.
-   On Simba intent-drift flag: inject the IntentCard delta into the Auditor's next pass.
-5. On pass: surface to the user. On a NEW failure mode: `log failure` (below), Auditor approves, user sees it.
+## Conceptual loop
+0. **Phase 0 — riskiest-assumption gate (before ANY build).** Simba → `IntentCard`; Do-er → `AssumptionSet`;
+   Auditor → `RATVerdict` (riskiest by kill-power × uncertainty + cheapest probe); Do-er runs the probe.
+   **Hard block: no build until it passes.** On fail → stop, report, `log failure`.
+1. **Build** — Do-er works only past the gate → `Output` + `Spans`.
+2. **Audit** — Simba drift-checks the `Output`; Auditor runs detectors → `Verdict` (deterministic → structural → judge).
+3. **Correct** — on fail, return the *specific* failing detector to the Do-er; bounded retries (max 3).
+4. **Close** — on pass, surface to the user; on a NEW failure mode, `log failure`.
 
-Each prong keeps its **own todolist and isolated context**. Only the typed artifacts cross a boundary.
+## Runbook — what to do when the user says `invoke trident`
+**You (this session) are the orchestrator.** You hold no prong's private context; you only pass the
+typed artifacts between subagents. Subagents can't spawn subagents, so never wrap the whole harness in
+one subagent — orchestrate from here. Keep a todolist of the phases below.
+
+Models: **Simba** = default (cheap, focused) · **Do-er** = Opus · **Auditor** = Fable (never the Do-er's model).
+
+**Phase 0 — RAT gate**
+1. Spawn **Simba** (`agentType` per `../simba/SKILL.md`): input = the user's problem + *their* messages only.
+   → returns `IntentCard` {goal, must_haves, forbid, pinned_feedback, intent_riskiest}.
+2. Spawn **Do-er** (Opus): input = the task. → returns `AssumptionSet` — every capability/platform/feasibility
+   assumption, each tagged {type, kill_power 1–5, uncertainty 1–5}. **It does not build yet.**
+3. Spawn **Auditor** (Fable): input = `AssumptionSet` + `IntentCard`. → returns `RATVerdict`
+   {riskiest (max kill_power × uncertainty), probe (the smallest command/read that could prove it impossible), pass_criteria}.
+4. Run the probe (directly, or a scoped Do-er). Evaluate against `pass_criteria`.
+5. **GATE:** fail → **STOP**, report to the user, `log failure`. pass → continue. *(Never skip this.)*
+
+**Phase 1 — Build**
+6. Spawn **Do-er** (Opus): input = task + `IntentCard` (honor must_haves / forbid / pinned_feedback).
+   → returns `Output` (the diff/result) + `Spans` (short trace; mark ⊘ root / ⚠ error).
+
+**Phase 2 — Audit**
+7. Spawn **Simba**: input = `Output` + `IntentCard` (Output only — never the Do-er's reasoning).
+   → returns `DriftFlag` {drifted_from, evidence} or "no drift".
+8. Spawn **Auditor** (Fable): input = `Output`, `Spans`, `DriftFlag`, and the active detectors from
+   `failures/failures.jsonl`. Order: deterministic → structural → (only if needed) rubric-judge; **fail closed**.
+   → returns `Verdict` [{detector_id, pass|fail, signal_seen}].
+
+**Phase 3 — Correct (max 3 rounds)**
+9. If `Verdict` has fails → spawn a fresh **Do-er** with the *specific* failing detector(s) to fix; re-run Phase 2.
+   Repeat ≤3. On exhaustion → surface the open `Verdict` to the user; never loop silently (FL-cf016).
+
+**Phase 4 — Close**
+10. On pass → surface `Output` to the user. If a NEW failure mode appeared that no CF covers → `log failure`.
 
 ## Trigger: `log failure` (and variants) — the SSOT owner
-Normalize to intent (per FL-cf026): `log failure` = `log fail` = `log this failure` = `log the fail` = `record failure`.
-On any of these:
-1. Locate the SSOT: `failures/failures.jsonl` in the **Trident repo**. If the Trident repo is not in
-   session scope, say so in one line and stop — do not write a divergent copy (FL-cf034: don't fake a guard).
-2. Read the **last line only** to get max `CF-###`; next id = max + 1 (never full-read, never reuse — FL-cf-numbering).
-3. Append one sanitized record (schema: `failures/schema.json`). Personal specifics (names, paths) go
-   to `failures.local.jsonl` (gitignored), never to the committed line (FL-cf013 blast-radius, FL-cf052 fidelity).
-4. Auditor approves the record (well-formed, deterministic-detector-first) before it is surfaced.
-5. Commit + push the SSOT to the Trident repo (git-tracked SSOT, same discipline as this kit's `progress.json`).
-6. Confirm back to the user: `logged CF-### (<title>)` — so a silent skip is impossible (FL-cf046).
+Normalize to intent (FL-cf026): `log failure` = `log fail` = `log this failure` = `log the fail` = `record failure`.
+1. Locate the SSOT `failures/failures.jsonl` in the **Trident repo**. If it's not in session scope, say so
+   in one line and stop — don't write a divergent copy (FL-cf034).
+2. Read the **last line only** for max `CF-###`; next id = max + 1 (never full-read, never reuse).
+3. Append one **sanitized** record (schema: `failures/schema.json`). Personal specifics go to
+   `failures.local.jsonl` (gitignored), never the committed line (FL-cf013, FL-cf052).
+4. **Auditor approves** the record (schema-valid, detector deterministic-where-possible, no personal data).
+5. `python3 tests/selftest.py` must pass, then commit + push the SSOT to the Trident repo.
+6. Confirm back: `logged CF-### (<title>)` — a silent skip is impossible (FL-cf046).
 
 ## Surface
 Claude Code / VS Code only — the loop spawns real subagents (Do-er, Fable Auditor, Simba). With this
-repo in scope, `log failure` appends → Auditor-approves → commits + pushes the SSOT git file. Never
-claim a write happened if it didn't (FL-cf046).
+repo in scope, `log failure` appends → Auditor-approves → commits + pushes the SSOT. Never claim a write
+happened if it didn't (FL-cf046).
 
 ## Hard guardrails (do not break)
 - No build, no deps — installs as a plain skills tree; orchestration uses subagents (Claude Code / VS Code).
 - No personal data or external paths in any committed record — re-scan before commit.
 - Deterministic detectors before any LLM-judge (FL-cf051). The judge (Fable) is never the Do-er (Opus).
+- Phase 0 is a hard gate — no build before the riskiest-assumption probe passes (FL-cf056).
