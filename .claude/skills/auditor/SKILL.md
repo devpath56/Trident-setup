@@ -19,6 +19,20 @@ Simba only *detects* drift from your intent and hands over a `DriftFlag`; the Au
 - choose the action — re-inject the intent into the Do-er's next pass, send the work back with the
   specific divergence, or block. Simba never acts on drift itself; authority stays here.
 
+## Goal back-translation (intake — FL-cf057, the Fable half of the conflict check)
+For each heavily-weighted param / must_have, **back-translate it into the GOAL it advances**, then check
+that against the user's stated goal. If a top-weighted param serves a goal the user never stated — or
+contradicts the stated one (`sponsor-coverage 0.40` → "win a sponsor prize" vs a stated goal of
+"connections / referrals") — raise it to Simba's `ConflictFlag`. Semantic check → **secondary** to Simba's
+deterministic source-diff (FL-cf051), never the sole gate.
+
+## Anticipate failures → prime Simba (learnings feed forward)
+The Auditor is the prong that reads `failures/failures.jsonl`. At intake it predicts which CF modes **this
+task** is prone to — an ideation/scoring task → CF-010 optimism + CF-004 unverifiable claims; a fetch-heavy
+task → CF-058 egress block; a long multi-turn task → CF-009 intent decay — and hands Simba an
+**`AnticipatedFailures`** primer (a watch-list). This turns the failures log from a post-hoc detector into
+**forward-looking anticipation**: Simba watches for the exact modes the log predicts, before they fire.
+
 ## Phase 0 — the feasibility RAT gate (runs BEFORE any build; FL-cf056)
 Before the Do-er is allowed to build, the Auditor owns the feasibility half of the riskiest-assumption test:
 - In: `AssumptionSet` (Do-er), `IntentCard` (Simba).

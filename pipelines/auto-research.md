@@ -55,6 +55,9 @@ Loop mechanics (RAT-style, token-lean):
 The winner + a **build plan** mapping each **sponsor tool → feature → resume skill**, PLUS the
 **anchor → referral path** (whose work it's built on, why they'll engage, the intro it earns).
 
+**Output format:** deliver as a **concise visual artifact (< 200 words)** — nested bullets, tables, and a
+small theme-aware infographic — not a prose wall. Every checkpoint/leaderboard uses the same format.
+
 ## Honest-scoring guardrails (learned the hard way)
 - **Independent audit beats self-score.** A self-scoring agent inflates ~15–20 pts (double-counts name-dropped
   sponsors) and will declare a false ≥85. Have a *different* model re-score; **fail closed** on any claim you
