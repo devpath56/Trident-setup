@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Trident CF record",
+  "description": "One line of failures.jsonl. The SSOT for a single observed failure mode. Generalized/sanitized: no personal paths, names, or company references in a committed record.",
+  "type": "object",
+  "required": ["id", "title", "tags", "status", "guard", "pattern", "detector"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^CF-[0-9]{3,}$",
+      "description": "CF-NNN. NNN = (max existing id) + 1, read from the last line only. Never reused."
+    },
+    "date": {
+      "type": ["string", "null"],
+      "description": "ISO date the failure was observed, or null."
+    },
+    "title": {"type": "string", "description": "Short failure-pattern title."},
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "e.g. instruction-following, hallucination, self-violation, context-degradation, judge-bias, tool-use, permission-model, bulk-refactor, state-loss, pattern-cargo-culting."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["observed", "guarded", "recurred", "resolved"],
+      "description": "Lifecycle. 'recurred' = fired again after a guard existed (strongest signal to move the guard into a detector)."
+    },
+    "related": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^CF-[0-9]{3,}$"},
+      "description": "Related CF ids."
+    },
+    "guard": {
+      "type": "string",
+      "description": "One-line behavioral rule that prevents this exact failure."
+    },
+    "pattern": {
+      "type": "string",
+      "description": "Generalized 1-2 sentence pattern. No personal specifics."
+    },
+    "detector": {
+      "type": "object",
+      "required": ["kind", "check", "signal"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["deterministic", "structural", "llm-judge", "hybrid"],
+          "description": "Auditor runs deterministic > structural > llm-judge, in that order (FL-cf051)."
+        },
+        "check": {"type": "string", "description": "Mechanical spec the Auditor runs."},
+        "signal": {"type": "string", "description": "The FAIL signature — what the check flags."}
+      }
+    },
+    "enterprise_environments": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Where this failure predictably recurs in real deployments, each as 'env: how it manifests'. Generic categories only — no personal/company specifics."
+    },
+    "pm_implication": {
+      "type": ["string", "array"],
+      "description": "Reusable design lesson(s) — the public IP. String or list of strings."
+    },
+    "trace": {
+      "type": "array",
+      "description": "Optional Phoenix/OpenInference-shaped span list.",
+      "items": {
+        "type": "object",
+        "required": ["span", "note"],
+        "additionalProperties": false,
+        "properties": {
+          "span": {"type": "string"},
+          "note": {"type": "string"},
+          "role": {"type": "string", "enum": ["ok", "error", "root"]}
+        }
+      }
+    },
+    "origin": {
+      "type": "string",
+      "description": "Provenance note. For seeded records: 'sanitized from private log'. Never contains personal data."
+    }
+  }
+}
