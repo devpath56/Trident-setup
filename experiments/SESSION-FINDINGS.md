@@ -95,3 +95,41 @@ harness should close.
 - **Process note — double-commit overhead.** Every change is committed to the branch, then copied to the
   standalone repo and committed+pushed again (2× git ops per change) to keep the mirror in sync. Fine for
   now; a single source + a release script would halve it.
+
+## E · Where each agent failed (per-agent ledger)
+
+**Do-er (Opus)** — the failure surface the Auditor exists to cover:
+- **Optimism inflation (recurring):** self-scored ideas ~15–20 pts above the independent audit; padded
+  sponsor_coverage with tacked-on tools ("Akash-for-batch-compute", "Pomerium-as-sandbox").
+- **Unverified-claim assertion (CF-004):** presented Amey Desai's "cited eval thresholds" as his artifact;
+  they were generic Ragas defaults → auditor failed closed (anchor 91→65).
+- **Over-reach past the anchor:** ScopeShrink/HarnessGen built "a step past" the anchor's literal work,
+  diluting anchor-fit — the rubric-violating move the auditor deflated.
+- **Scale drift (CF-059):** sub-scores on a 0–1 scale one round, 0–100 the others.
+- **Name collision:** reused "EvalArena" across rounds (orchestrator had to rename).
+
+**Auditor (Fable)** — did its job, with one handoff failure:
+- **Context-handoff miss (CF-061):** the Exp-1 RAT auditor probed the PyPI package (and pip-installed it)
+  instead of the local repo, then narrated "probe PASSED" from the wrong target — orchestrator re-verified
+  locally (never trust a subagent's narrated result — CF-037).
+- Otherwise **confirmed valuable:** deflated inflation, failed closed on unverifiable claims, reordered
+  leaderboards honestly, caught the double-win vs name-drop distinction.
+
+**Simba** — the most consequential miss:
+- **CF-057:** pinned the user's stated weights without flagging they conflicted with the user's own supplied
+  people-first methodology → 5 rounds of wrong-objective work. Catching exactly this is its entire purpose.
+- **Under-exercised:** in the single-shot experiments (Exp-1/2/toolkit) its core recency-drift scenario
+  never occurred, so its designed value went untested there.
+
+**Research agents:**
+- **Egress-limited coverage:** many first-party pages 403'd (nickyt.co, nexla.com, metaview.ai, LinkedIn)
+  → anchors leaned on search snippets, honestly tagged `unverified-fetch`, never fabricated.
+- **Affinity dry:** yielded no strong IIT/Berkeley/Indian ties among judges (all 0); correctly refused to
+  infer ethnicity/gender from names.
+
+**Orchestrator (main loop):**
+- **CF-060:** retried the blocked Luma fetch 5× before reading the proxy README (stale-port 000s).
+- **CF-062/063:** duplicate source fetch + full-context re-injection every subagent round.
+- **Discipline lapse:** skipped the todolist until the user called it out ("are you following tightly scoped
+  loops with todolist") — a live instance of the very context-degradation Trident targets (CF-009).
+- **No-op recurrence (CF-033/050):** emitted "No response requested" once after an interrupt.

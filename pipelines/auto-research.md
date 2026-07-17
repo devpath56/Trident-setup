@@ -1,0 +1,69 @@
+# auto-research — hackathon idea pipeline (durable, shippable)
+
+**Input:** an event (Luma link / uploaded page) + your resume skills to harden.
+**Output:** ranked, evidence-scored project ideas + a winner with a build plan, optimized for the real
+goal — **meaningful connections → feedback → referrals**, not just prizes.
+
+Adapted from the people-first hackathon-research methodology (Isha Mishra) and hardened by a live run
+(see `../experiments/SESSION-FINDINGS.md`). Runs great wrapped in Trident (independent auditor keeps the
+scores honest), or standalone.
+
+## Invoke
+> "run auto-research on this event" + the event data (or an uploaded page) + your skills list.
+
+## Phase 0 — Intake (the feasibility gate)
+Extract, from the event: sponsors/partner tools, prize tracks, judging criteria, judges + hosts, date/format.
+- **Grey-case (no silent substitution):** if prize tracks or judging criteria aren't stated, do NOT invent
+  them — score sponsor against the tool list and label any judging inference as inference.
+- **Egress reality:** event pages (Luma) and many first-party sites are often blocked by org egress policy.
+  On a gateway 403 / `connect_rejected`, STOP fetching and accept a user-paste / uploaded PDF / allowed-host
+  mirror. Never fabricate the data (CF-004, CF-058).
+
+## Phase 1 — People → Anchors (do this BEFORE ideating)
+For each **judge, mentor, and host** (not just judges — hosts/mentors gate community + referrals), find
+**first-party authored work** (their own GitHub, blog, talks) on the event's axis. Marketing/PR doesn't count.
+Per anchor record: authored_work (+source), a **build-hook** (a project built ON their work you can demo to
+them), and scores: `authored_depth` · `axis_relevance` · `engagement_likelihood`.
+- **Affinity** feeds engagement_likelihood: shared **alma-mater / community** (e.g. IIT, Berkeley,
+  women-in-tech) → warm intro + referral probability. Score affinity **only on publicly-stated affiliations**
+  — never infer ethnicity/gender from a name/photo (CF-004/CF-018). Alma-mater overlap is the strongest signal.
+- Research is egress-limited: lean on WebSearch snippets, tag `unverified-fetch`, never fabricate.
+
+## Phase 2 — Generate → Score → Re-rank loop
+Each idea must be **anchored on one named person's authored work** (build → demo → feedback → referral).
+Score each 0–100 on four sub-scores, **weighted**:
+
+    score = 0.35·anchor_fit + 0.30·skill_match + 0.20·feasibility + 0.15·sponsor_fit
+
+- **anchor_fit (0.35):** genuinely builds on a specific person's real artifact → you'd demo it to them.
+  Deflate name-drops and ideas "a step past" their literal work.
+- **skill_match (0.30):** fit to your target skills.
+- **feasibility (0.20):** one event-day; punish >1 hard subsystem or an uncertain external API.
+- **sponsor_fit (0.15):** load-bearing sponsor use; **double-win bonus** when the sponsor IS the anchor
+  person's own company (anchor-fit and sponsor-fit align — the pattern that won this run).
+
+Loop mechanics (RAT-style, token-lean):
+1. **R1:** generate 6 ideas; score all; show the four sub-scores + one evidence line each; top-3 leaderboard
+   with one-line loss reasons; log the rest to a **roads-not-taken** ledger (never silently drop).
+2. **R2+:** keep top-3; generate **3 new** biased toward the leader's strengths, **patching its weakest
+   sub-score**; **delta re-score only the new/changed** (carry the rest); update leaderboard + ledger.
+3. **Stop** when a candidate ≥85 AND two rounds fail to beat the best by >5, OR after 5 rounds.
+4. **Grey-case guard:** if the feasibility leader is anchor/sponsor-thin, show both sub-scores + name the
+   tension — never launder it into one number.
+
+## Phase 3 — Output
+The winner + a **build plan** mapping each **sponsor tool → feature → resume skill**, PLUS the
+**anchor → referral path** (whose work it's built on, why they'll engage, the intro it earns).
+
+## Honest-scoring guardrails (learned the hard way)
+- **Independent audit beats self-score.** A self-scoring agent inflates ~15–20 pts (double-counts name-dropped
+  sponsors) and will declare a false ≥85. Have a *different* model re-score; **fail closed** on any claim you
+  can't verify (CF-004, CF-010). Expect an honest ceiling around ~80, not 90+.
+- **Cross-check params vs. methodology at intake.** If the user gives explicit weights AND a reference
+  methodology, confirm they agree before running — a wrong rubric wastes every downstream round (CF-057).
+  *The biggest risk is the objective being wrong, not the scoring.*
+
+## Templates
+- `report.md` — Phase 0–1 summary (event packet + anchor table), ends "NEEDS YOU: confirm framing/anchor".
+- `roads-not-taken.md` — dropped ideas + why + a revisit trigger.
+- `build-plan.md` — winner, sponsor→feature→skill map, anchor→referral path, grey-case notes.
