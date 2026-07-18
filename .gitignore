@@ -2,3 +2,7 @@
 failures.local.jsonl
 *.local.jsonl
 failures/*.local.jsonl
+
+# Python bytecode
+__pycache__/
+*.pyc
