@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Trident PD record (pre-emptive decision)",
+  "description": "One line of decisions.jsonl. A forward-looking design decision that pre-empts a predicted failure, informed by an external authority — NOT an observed failure. Kept separate from failures.jsonl so the CF SSOT only ever grows from real incidents (the Trident discipline). A PD is promoted to a CF the first time its failure is actually observed. Same sanitization rule as CF records: no personal paths, names, or private-company references.",
+  "type": "object",
+  "required": ["id", "title", "kind", "scope", "status", "gap", "guard", "pattern", "detector", "authority", "promotion_trigger", "applied_in"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^PD-[0-9]{3,}$",
+      "description": "PD-NNN. Separate number space from CF. Never reused."
+    },
+    "date": {"type": ["string", "null"], "description": "ISO date the decision was made."},
+    "title": {"type": "string", "description": "Short decision title."},
+    "kind": {"type": "string", "const": "decision", "description": "Always 'decision' — this is not an observed failure."},
+    "scope": {"type": "string", "const": "trident-meta", "description": "This ledger is meta-scoped: it records decisions about Trident ITSELF, never object-level decisions from a session Trident is watching. Enforced deterministically by validate_decisions.py via applied_in."},
+    "status": {
+      "type": "string",
+      "enum": ["pre-emptive", "promoted", "retired"],
+      "description": "'pre-emptive' = predicted, not yet seen. 'promoted' = the failure was observed and a CF now owns it. 'retired' = decision reversed/superseded."
+    },
+    "gap": {"type": "string", "description": "The review gap this closes (human-readable)."},
+    "related": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^(CF|PD)-[0-9]{3,}$"},
+      "description": "Related CF or PD ids."
+    },
+    "guard": {"type": "string", "description": "One-line rule now in place to pre-empt the failure."},
+    "pattern": {"type": "string", "description": "The predicted failure mode this pre-empts. Generalized, no personal specifics."},
+    "detector": {
+      "type": "object",
+      "required": ["kind", "check", "signal"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string", "enum": ["deterministic", "structural", "llm-judge", "hybrid", "reminder"]},
+        "check": {"type": "string"},
+        "signal": {"type": "string"}
+      }
+    },
+    "authority": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "External authorities that informed the decision (public references only). This is what distinguishes a PD from a hypothetical: it is grounded in current practice, not invented."
+    },
+    "promotion_trigger": {"type": "string", "description": "The concrete observed event that would convert this PD into a real CF."},
+    "applied_in": {"type": "array", "items": {"type": "string"}, "minItems": 1, "description": "Repo-relative files changed to enact the decision. This is the meta-scope signal: every path must resolve inside Trident's own design tree (.claude/skills/, failures/, tests/, core root docs) and exist on disk, or validate_decisions.py rejects the record as object-level."},
+    "origin": {"type": "string", "description": "Provenance note. Always makes explicit this is pre-emptive, not observed."}
+  }
+}

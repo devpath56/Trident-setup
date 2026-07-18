@@ -1,0 +1,13 @@
+{
+  "dimension": "groundedness",
+  "version": 1,
+  "type": "binary",
+  "criterion": "PASS iff every factual claim in the output is supported by a cited span in the source; otherwise FAIL.",
+  "calibration_slice": "fixtures/calibration_slice.jsonl",
+  "calibration_dimension": "groundedness_good",
+  "validated": {
+    "tnr_bar": 0.6,
+    "min_neg": 5,
+    "content_hash": "5ca576fcb1d010abfe517f8e07c5b4c9d91a41320ced65325d51420e81cfb6f8"
+  }
+}

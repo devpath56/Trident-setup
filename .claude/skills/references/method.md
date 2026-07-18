@@ -46,7 +46,7 @@ A single agent is optimistic about its own output (FL-cf010): it inflates 15–2
 pass. Trident makes the checks **adversarial**, so a claim has to survive an agent that is *trying to break
 it*, not the agent that made it.
 
-- **The judge is a different model.** The Auditor is **Fable**, never the Do-er (Opus). It grades the
+- **The judge is a different model.** The Auditor is **Sonnet 5**, never the Do-er (Opus). It grades the
   artifact, and it never saw the Do-er's reasoning, so it can't be talked into grading the effort.
 - **Refute-by-default.** The Auditor **fails closed**: any claim it can't verify is a fail, not a pass. On a
   hard question, spin independent skeptics and kill the claim unless a majority survives.
@@ -71,7 +71,7 @@ pointed at a *different* master, and no prong can both do the work and bless it.
 |---|---|---|---|
 | **Do-er** (Opus) | shipping the task | grade its own output | the maker is the optimist; keep it off the scorecard |
 | **Simba** | *you* (the user) | read the Do-er's reasoning, or act on drift itself | if it saw the reasoning it could be argued out of your intent; it stays your memory, not the Do-er's |
-| **Auditor** (Fable) | the artifact + the failures log | be the Do-er's model, or grade effort | a different model can't rationalize its own work |
+| **Auditor** (Sonnet 5) | the artifact + the failures log | be the Do-er's model, or grade effort | a different model can't rationalize its own work |
 
 - **Separation of powers.** *"Simba proposes, the Auditor disposes."* Simba detects drift and emits a
   `DriftFlag`; it never edits, never argues, never halts. The Auditor holds the single point of authority
@@ -85,10 +85,47 @@ pointed at a *different* master, and no prong can both do the work and bless it.
 
 ---
 
+## Managing an agent's context window (the context-contract)
+Each agent **rehydrates its window from typed artifacts** instead of accumulating a transcript: a **Frozen
+Packet** (run invariants, incl. the IntentCard, referenced by pointer not re-pasted), a **WorkingState**
+(the current artifact + pinned intent, rewritten each round), a **retrieval slice** (only the tag-relevant
+rows of the failures log / spans), and a **per-round prompt = packet-pointer + WorkingState + this round's
+delta**. Compaction is safe here **only because a different prong holds the invariants** — intent lives in
+Simba's IntentCard, re-asserted, never summarized.
+
+### The policy (calibrated from RESULT-05)
+1. **Compact history, never the artifact.** The current artifact is the irreducible floor; keep it verbatim.
+   All savings come from dropping superseded versions, reasoning, and tool-output.
+2. **Threshold-trigger — don't compact every round.** The contract's fixed overhead (packet + IntentCard)
+   loses at low history. Accumulate while cheap; switch to the contract once **per-round history exceeds the
+   carried artifact** (empirically ≈ round 4; cumulative cut then climbs 43% → 56% by round 6).
+3. **Pin invariants out-of-band (Simba's IntentCard).** This is *why* compaction is safe — a different prong
+   holds what you're compressing away. Never fold invariants into the lossy stream.
+4. **Gate every compaction (mandatory).** Before promoting a compacted WorkingState, run the invariant as an
+   executable check and **block** on fail. This is the guarantee, not the hope.
+5. **Aim it at high-history loops** (research fan-outs, multi-round debugging, migrations). Not 2–3 round
+   tasks, where compaction *loses*.
+6. **Per-prong budgets + retrieval slice.** Simba tiny (intent + Output digest) · Auditor medium (Output +
+   Spans + active detectors) · Do-er largest (artifact + delta). Pull only tag-relevant failures/spans.
+
+### Enforcement (a policy is real only once its check runs — CF-034)
+Prose can't enforce itself. The three **safety** rules (4 gate · 1 keep-artifact · 3 pin-intent) are a
+**fail-closed gate the Auditor executes**, `tests/compaction_policy.py` — proven: it BLOCKS a dropped
+invariant, a dropped artifact, and an unpinned invariant, and PROMOTES only a clean compaction (6/6). Rule 2
+(when to compact) is **advisory** — compacting too early only wastes tokens, it can't break correctness, so
+it's a `should_compact()` helper, not a gate.
+
+**Honest status (RESULT-05, Fable-certified):** proven **safe + quality-preserving** (P2/P3/P4 passed; the
+pinned IntentCard even *strengthened* an invariant a full-history arm left as a gap). Efficiency is
+**round-count-dependent**: 31% cut at 3 rounds (missed the pre-registered 40%), crossing 40% at round 4 and
+56% by round 6. Use it for **safety + intent-preservation** now, and for **tokens** only past the crossover.
+
 ## The method in one line
 **Split the work into small bounded loops; in each, let an agent loyal to a different master try to break the
 result; and settle every dispute through one authority over one shared failures log** — so drift is caught
 early, optimism can't self-certify, and every real mistake becomes a permanent check.
 
-See also: `loop-contract.md` (the no-leak isolation that keeps loops small), `evaluators.md` (CF → check
-method), `phoenix-protocol.md` (the eval shapes), `house-rules.md` (the cross-cutting rules every prong obeys).
+See also: `experiment-method.md` (how to *prove* a claim before shipping it — pre-register, one variable,
+runnable ground truth, independent fail-closed audit), `loop-contract.md` (the no-leak isolation that keeps
+loops small), `evaluators.md` (CF → check method), `phoenix-protocol.md` (the eval shapes), `house-rules.md`
+(the cross-cutting rules every prong obeys).

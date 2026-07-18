@@ -14,7 +14,7 @@ The three prongs:
    you ──▶  DO-ER (Opus)  ─────────────▶ output ──▶ you
              │            ▲            │
              │            │            │
-        SIMBA ───────────┘        AUDITOR (Fable)
+        SIMBA ───────────┘        AUDITOR (Sonnet 5)
      (guards your intent)      (judges the output)
 ```
 
@@ -23,7 +23,7 @@ The three prongs:
   durably remembers your goal and the corrections you've already made (which otherwise decay under the
   latest message), reads the Do-er's *result* to detect drift from that intent, and **flags it to the
   Auditor, which decides the response**. Simba proposes; the Auditor disposes.
-- **Auditor** — a **Fable** subagent. Judges the Do-er's output with **deterministic evaluators first**,
+- **Auditor** — a **Sonnet 5** subagent. Judges the Do-er's output with **deterministic evaluators first**,
   an **LLM-judge second** (per FL-cf051), modeled on Arize Phoenix's evaluator taxonomy.
 
 The name is literal: three prongs, one shaft. The shaft is the **failures log** (the SSOT) — every
@@ -83,7 +83,7 @@ Artifacts exchanged between prongs (the only things that cross a loop boundary):
 The single most expensive failure class is building something that was never possible. So **no build
 of any kind starts until the riskiest assumption is proven by a cheap probe** (hard block, always):
 - **Do-er** enumerates the plan's assumptions — it may not skip the capability/platform/connector ones.
-- **Auditor (Fable)** owns the *feasibility* gate: it ranks assumptions by **kill-power × uncertainty**,
+- **Auditor (Sonnet 5)** owns the *feasibility* gate: it ranks assumptions by **kill-power × uncertainty**,
   names the single riskiest, and specifies the **cheapest falsifying probe** — the smallest experiment
   that could prove the approach impossible (one throwaway connector call, one capability query, one doc read).
 - **Simba** owns the *intent* gate in parallel: is this even the goal? (It can't judge feasibility — its
@@ -92,15 +92,15 @@ of any kind starts until the riskiest assumption is proven by a cheap probe** (h
 - On probe fail → **stop, report, and log a CF.** Minutes spent, not hours. This directly guards
   FL-cf044 (built on an unverified platform capability) and FL-cf039 (designed on an unprobed connector op).
 
-## The Auditor — deterministic-first, Fable-judged
+## The Auditor — deterministic-first, Sonnet 5-judged
 Ordering is fixed and non-negotiable (FL-cf051 is itself a guard here):
 
 1. **Deterministic detectors** — string/structural/grep checks derived from CF guards.
    Example: FL-cf047 → `grep <removed-entity> across every touched artifact` before "removal complete".
 2. **Structural detectors** — schema/acceptance-test checks (FL-cf025: is there a verifiable artifact?).
-3. **LLM-judge (Fable), rubric-based only** — for what deterministic checks can't reach
+3. **LLM-judge (Sonnet 5), rubric-based only** — for what deterministic checks can't reach
    (persona drift, verbatim-quote fidelity). **Never free-form self-assessment** (FL-cf010).
-   Fable ≠ the Do-er (Opus) on purpose: a different model, so it is not grading its own work.
+   Sonnet 5 ≠ the Do-er (Opus) on purpose: a different model, so it is not grading its own work.
 
 ## Phoenix-modeled evaluation (described, not executed)
 We are pure-skill, so we do not run `phoenix.evals`. Instead the SSOT and the Auditor **adopt

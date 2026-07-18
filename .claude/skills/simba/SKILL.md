@@ -47,7 +47,7 @@ drifted_from:  <goal | must_have | forbid | pinned_feedback | none>
 evidence:      the part of the Output that diverges   (omit when determination is no-drift)
 ```
 `drifted_from` names which IntentCard line the `Output` diverged from. The typed head makes the *parse*
-exact; it does not by itself guarantee the token is *correct* — that residue is the Fable judge's job.
+exact; it does not by itself guarantee the token is *correct* — that residue is the Sonnet 5 judge's job.
 
 ## Intake — catch a WRONG OBJECTIVE before the loop (FL-cf057)
 The costliest drift is the intent being self-inconsistent from the start (stated params vs the goal/method

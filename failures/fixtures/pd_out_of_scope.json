@@ -1,0 +1,16 @@
+{
+  "id": "PD-900",
+  "date": "2026-07-17",
+  "title": "OBJECT-LEVEL decision from a watched session — MUST be rejected by the meta-scope gate",
+  "kind": "decision",
+  "status": "pre-emptive",
+  "scope": "trident-meta",
+  "gap": "fixture only — simulates a decision made about the app Trident is watching, not about Trident",
+  "guard": "n/a — fixture",
+  "pattern": "A session invokes Trident to watch a product build; a design decision about THAT product is mistakenly written to the decisions ledger.",
+  "detector": {"kind": "reminder", "check": "fixture", "signal": "fixture"},
+  "authority": ["fixture"],
+  "promotion_trigger": "fixture",
+  "applied_in": ["consumer-app/src/checkout.ts", ".claude/skills/auditor/SKILL.md"],
+  "origin": "FIXTURE — known-bad control. applied_in points outside Trident's design tree; the gate must flag it."
+}
