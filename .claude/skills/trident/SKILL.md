@@ -1,6 +1,6 @@
 ---
 name: trident
-description: Wrap a working session in a three-prong quality harness — a Do-er (Opus) watched by Simba (durable intent memory + drift detector) and an Auditor (Fable; deterministic evaluators first, LLM-judge second), over one failures-log SSOT. Trigger on "invoke trident", "run trident", "audit this work"; and — always — owns the normalized "log failure" trigger that appends the next CF-### to the SSOT. Claude Code / VS Code only (spawns real subagents).
+description: Wrap a working session in a three-prong quality harness — a Do-er (Opus) watched by Simba (durable intent memory + drift detector) and an Auditor (Sonnet 5; deterministic evaluators first, LLM-judge second), over one failures-log SSOT. Trigger on "invoke trident", "run trident", "audit this work"; and — always — owns the normalized "log failure" trigger that appends the next CF-### to the SSOT. Claude Code / VS Code only (spawns real subagents).
 ---
 
 # trident — the orchestrator
@@ -24,14 +24,18 @@ description: Wrap a working session in a three-prong quality harness — a Do-er
 typed artifacts between subagents. Subagents can't spawn subagents, so never wrap the whole harness in
 one subagent — orchestrate from here. Keep a todolist of the phases below.
 
-Models: **Simba** = default (cheap, focused) · **Do-er** = Opus · **Auditor** = Fable (never the Do-er's model).
+Models: **Simba** = Sonnet 5 · **Do-er** = Opus · **Auditor** = Sonnet 5 (never the Do-er's model).
+Simba and the Auditor share a model, so the two watcher prongs are correlated — the no-self-grading invariant
+still holds (both grade the Opus Do-er's Output, neither grades its own work), and deterministic detectors
+carry the real decorrelation. Simba stays independent of the build by reading Output-only, never the Do-er's
+reasoning (PD-006).
 
 **Phase 0 — RAT gate**
 1. Spawn **Simba** (`agentType` per `../simba/SKILL.md`): input = the user's problem + *their* messages only.
    → returns `IntentCard` {goal, must_haves, forbid, pinned_feedback, intent_riskiest}.
 2. Spawn **Do-er** (Opus): input = the task. → returns `AssumptionSet` — every capability/platform/feasibility
    assumption, each tagged {type, kill_power 1–5, uncertainty 1–5}. **It does not build yet.**
-3. Spawn **Auditor** (Fable): input = `AssumptionSet` + `IntentCard`. → returns `RATVerdict`
+3. Spawn **Auditor** (Sonnet 5): input = `AssumptionSet` + `IntentCard`. → returns `RATVerdict`
    {riskiest (max kill_power × uncertainty), probe (the smallest command/read that could prove it impossible), pass_criteria}.
 4. Run the probe (directly, or a scoped Do-er). Evaluate against `pass_criteria`.
 5. **GATE:** fail → **STOP**, report to the user, `log failure`. pass → continue. *(Never skip this.)*
@@ -43,7 +47,7 @@ Models: **Simba** = default (cheap, focused) · **Do-er** = Opus · **Auditor** 
 **Phase 2 — Audit**
 7. Spawn **Simba**: input = `Output` + `IntentCard` (Output only — never the Do-er's reasoning).
    → returns `DriftFlag` {drifted_from, evidence} or "no drift".
-8. Spawn **Auditor** (Fable): input = `Output`, `Spans`, `DriftFlag`, and the active detectors from
+8. Spawn **Auditor** (Sonnet 5): input = `Output`, `Spans`, `DriftFlag`, and the active detectors from
    `failures/failures.jsonl`. Order: deterministic → structural → (only if needed) rubric-judge; **fail closed**.
    → returns `Verdict` [{detector_id, pass|fail, signal_seen}].
 
@@ -65,13 +69,30 @@ Normalize to intent (FL-cf026): `log failure` = `log fail` = `log this failure` 
 5. `python3 tests/selftest.py` must pass, then commit + push the SSOT to the Trident repo.
 6. Confirm back: `logged CF-### (<title>)` — a silent skip is impossible (FL-cf046).
 
+## Trigger: `log decision` (and variants) — the META-scoped decisions ledger
+Normalize to intent: `log decision` = `log a decision` = `record decision` = `log this as a decision`.
+This writes a `PD-###` to `failures/decisions.jsonl` — a *pre-emptive design decision about Trident
+itself*, **not** an observed failure and **not** an object-level decision from a session Trident is watching.
+1. **Meta-scope check first.** A decision is loggable here ONLY if it changes Trident's **own** design tree
+   (`.claude/skills/`, `failures/`, `tests/`, core root docs). A decision about the app/work being watched
+   does **not** go here — say so in one line and stop. This is the whole point of the ledger being separate.
+2. Number from the last `PD-` line (separate space from `CF-`); draft the record (schema:
+   `failures/decisions.schema.json`) with `scope: "trident-meta"`, an `authority`, a `detector`, the
+   `applied_in` files, and a `promotion_trigger`.
+3. **Gate (deterministic, fail-closed):** `python3 failures/validate_decisions.py` must pass — it rejects
+   any PD whose `applied_in` escapes the design tree or doesn't exist on disk. Then `python3 tests/selftest.py`.
+4. Auditor approves; append, commit, push. Confirm `logged PD-### (<title>)`.
+5. **Promotion:** a PD becomes a real `CF-###` only when its `promotion_trigger` is actually observed —
+   then run `log failure` with `related: [PD-xxx]` and set the PD `status: promoted` (`references/failures-log.md`).
+
 ## Surface
-Claude Code / VS Code only — the loop spawns real subagents (Do-er, Fable Auditor, Simba). With this
+Claude Code / VS Code only — the loop spawns real subagents (Do-er, Sonnet 5 Auditor, Simba). With this
 repo in scope, `log failure` appends → Auditor-approves → commits + pushes the SSOT. Never claim a write
-happened if it didn't (FL-cf046).
+happened if it didn't (FL-cf046). `log decision` is the meta-scoped sibling — Trident's own design only,
+gated by `validate_decisions.py`.
 
 ## Hard guardrails (do not break)
 - No build, no deps — installs as a plain skills tree; orchestration uses subagents (Claude Code / VS Code).
 - No personal data or external paths in any committed record — re-scan before commit.
-- Deterministic detectors before any LLM-judge (FL-cf051). The judge (Fable) is never the Do-er (Opus).
+- Deterministic detectors before any LLM-judge (FL-cf051). The judge (Sonnet 5) is never the Do-er (Opus).
 - Phase 0 is a hard gate — no build before the riskiest-assumption probe passes (FL-cf056).

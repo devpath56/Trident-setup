@@ -1,0 +1,7 @@
+{
+  "dimensions": [
+    {"name": "accuracy", "verdict": "pass"},
+    {"name": "groundedness", "verdict": "fail", "rationale": "claim about latency is unsupported by the cited span"},
+    {"name": "quote_fidelity", "verdict": "pass"}
+  ]
+}

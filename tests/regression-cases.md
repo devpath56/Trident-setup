@@ -69,7 +69,32 @@ PASS:     the detector extracts the first-stated token (a parenthetical secondar
 FAIL:     the detector's verdict flips on a non-primary token (a false FAIL from field precedence)
 detector: deterministic (first-stated-token extraction; enum-field conformance)
 
-### RC-CF-063 — effect owning timers listed render-state in deps
+## Pre-emptive decisions (PD-### — meta-scoped, executed by `failures/validate_decisions.py`)
+### RC-PD-001 — judge verdict must be per-dimension binary, not numeric/Likert
+trigger:  a rubric judge emits a dimension verdict
+PASS:     every dimension is a binary pass/fail with no numeric/scale field (fixture: verdict_good_binary.json)
+FAIL:     a dimension carries a numeric score or "N/5" rating (control: verdict_bad_numeric.json — must fire)
+detector: deterministic (verdict_is_binary token/type scan)
+
+### RC-PD-002 — unvalidated (agreeable) judge is not a gate
+trigger:  a rubric judge's per-dimension verdicts are scored against a human-labeled calibration slice
+PASS:     a dimension gates only if TNR >= bar AND it has >= MIN_NEG hard negatives (fixture: groundedness_good)
+FAIL:     an agreeable judge (high TPR, TNR < bar) or a slice with no hard negatives is treated as validated
+detector: deterministic (failures/tnr.py per-dimension TNR = TN/(TN+FP); controls: groundedness_agreeable, only_positives)
+
+### RC-PD-004 — judge rubric edited silently (criteria drift)
+trigger:  a judged dimension's rubric criterion is changed
+PASS:     the change bumps version + re-records content_hash + re-passes the TNR gate (rubrics/groundedness.json gate-ready)
+FAIL:     the criterion changes but the stored content_hash is stale (control: fixtures/rubric_tampered.json flagged)
+detector: deterministic (failures/rubrics.py sha256(criterion|version) mismatch + calibration-dimension TNR check)
+
+### RC-PD-scope — decisions ledger rejects an object-level (non-Trident) decision
+trigger:  a PD is proposed whose applied_in points outside Trident's own design tree
+PASS:     validate_decisions.py flags it; only PDs touching .claude/skills|failures|tests|core-docs pass
+FAIL:     an object-level decision (e.g. applied_in a watched app's source) is accepted into decisions.jsonl
+detector: deterministic (meta_scope_violations path-prefix + on-disk-existence check; control: pd_out_of_scope.json)
+
+### RC-CF-064 — effect owning timers listed render-state in deps
 trigger:  a React effect installs timers/subscriptions/an exposed run API and lists changing render state (e.g. a state-machine phase) in its deps
 PASS:     the exposed async interaction/measure call drives to terminal state and resolves within a bounded timeout
 FAIL:     the interaction/measure promise never settles (times out) after a state transition — cleanup cancelled the in-flight timers

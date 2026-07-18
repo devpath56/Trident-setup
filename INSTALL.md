@@ -17,7 +17,7 @@ always-on **"log failure"** trigger. In VS Code, the Claude Code extension picks
 `~/.claude/skills/` the same way.
 
 ## Surface: Claude Code / VS Code only
-Trident's orchestration spawns real **subagents** (Do-er, a Fable Auditor, Simba), so it targets
+Trident's orchestration spawns real **subagents** (Do-er, a Sonnet 5 Auditor, Simba), so it targets
 Claude Code / VS Code where subagents exist — not claude.ai / Cowork. Install stays trivial (a skills
 tree, no build, no deps); it's the runtime that needs subagents.
 

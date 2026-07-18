@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trident, from first principles</title>
+<!-- ============================================================================================
+     FEEDBACK-LOOP PROTOTYPE (not a published artifact, on purpose).
+     Run it LOCALLY so there is no artifact CSP, and Agentation can attach:
+        cd <folder> && python3 -m http.server 8000   →   open http://localhost:8000/trident-first-principles.html
+     Wire Agentation (https://www.agentation.com):
+        • Browser extension  → no change needed; open the page and use its toolbar.
+        • Embeddable script  → paste the snippet you copy from agentation.com at the SLOT near </body>.
+     Every meaningful element has a stable id + data-anchor (e.g. #d-optimism-lies, DERIV[2]), so
+     Agentation's captured selector maps 1:1 to a source block: paste its markdown back and I grep the id.
+     ============================================================================================ -->
+<!-- taste-skill applied. Design read: an interactive engineering explainer for a technical builder;
+     calm blueprint aesthetic; single steel-blue accent; off-white/off-black; no em-dashes; no filled
+     bars; no section-number eyebrows; theme-aware; progressive disclosure via native <details>.
+     Dials: VARIANCE 4 / MOTION 2 / DENSITY 7. -->
+<style>
+:root{
+  --paper:#f3f2ef;--card:#fbfaf8;--ink:#16181d;--muted:#5c616b;--faint:#8a8f99;
+  --line:#e2dfd9;--line2:#cbc7bf;--accent:#2c6e8f;--accent-soft:#dbe8ee;--onaccent:#f7fbfd;
+  --sh:0 1px 2px rgba(22,24,29,.05),0 12px 32px rgba(22,24,29,.07);
+  --sans:"Helvetica Neue",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  --paper:#0f1115;--card:#171a20;--ink:#e8e9ec;--muted:#9aa0aa;--faint:#6b7079;
+  --line:#252a31;--line2:#363c45;--accent:#5faaca;--accent-soft:#16303c;--onaccent:#0f1115;
+  --sh:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.34);
+}}
+:root[data-theme="light"]{--paper:#f3f2ef;--card:#fbfaf8;--ink:#16181d;--muted:#5c616b;--faint:#8a8f99;--line:#e2dfd9;--line2:#cbc7bf;--accent:#2c6e8f;--accent-soft:#dbe8ee;--onaccent:#f7fbfd;--sh:0 1px 2px rgba(22,24,29,.05),0 12px 32px rgba(22,24,29,.07)}
+:root[data-theme="dark"]{--paper:#0f1115;--card:#171a20;--ink:#e8e9ec;--muted:#9aa0aa;--faint:#6b7079;--line:#252a31;--line2:#363c45;--accent:#5faaca;--accent-soft:#16303c;--onaccent:#0f1115;--sh:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.34)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-weight:450;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:820px;margin:0 auto;padding:0 20px 72px}
+.hero{padding:54px 0 8px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1{font-size:clamp(29px,5.4vw,48px);line-height:1.05;letter-spacing:-.03em;margin:.18em 0 .18em;font-weight:680;max-width:19ch}
+.lede{color:var(--muted);font-size:17px;max-width:60ch;margin:0}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:20px 0 2px;padding-top:16px;border-top:1px solid var(--line2);flex-wrap:wrap}
+h2{font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--faint);text-transform:uppercase;margin:34px 2px 6px;font-family:var(--mono)}
+.hint{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+.toggle{font-family:var(--mono);font-size:11px;color:var(--accent);background:none;border:1px solid var(--line2);border-radius:999px;padding:4px 11px;cursor:pointer}
+.toggle:hover{background:var(--accent-soft)}
+p.body{color:var(--muted);font-size:14.5px;margin:2px 0 0;max-width:70ch}
+/* disclosure card */
+details{background:var(--card);border:1px solid var(--line);border-radius:13px;box-shadow:var(--sh);margin-top:10px;overflow:hidden}
+details[open]{border-color:var(--line2)}
+summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;gap:13px;align-items:baseline}
+summary::-webkit-details-marker{display:none}
+.idx{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700;flex:0 0 auto}
+.sum{flex:1;min-width:0}
+.sum .t{font-size:15.5px;font-weight:600;letter-spacing:-.01em}
+.sum .c{font-size:12.5px;color:var(--muted);margin-top:1px}
+.chev{flex:0 0 auto;color:var(--faint);font-size:12px;transition:transform .18s ease;align-self:center}
+details[open] .chev{transform:rotate(90deg)}
+.reveal{padding:2px 16px 16px 45px;border-top:1px solid var(--line)}
+.lab{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:13px 0 4px}
+.reveal p{margin:0;font-size:13.5px;color:var(--muted)}
+.ev{font-family:var(--mono);font-size:11px;color:var(--accent);margin-left:8px}
+.resp{margin-top:12px;padding:11px 13px;border-radius:10px;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+.resp .rt{font-size:13.5px;color:var(--ink);font-weight:500}
+.tag{font-family:var(--mono);font-size:10.5px;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:6px;padding:1px 7px;display:inline-block;margin-top:8px}
+.loyal{font-family:var(--mono);font-size:11px;color:var(--accent);flex:0 0 auto;align-self:center}
+.never{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+.never b{color:var(--ink);font-weight:600}
+.real{margin-top:11px;font-family:var(--mono);font-size:11.5px;color:var(--ink);background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 26%,transparent);border-radius:8px;padding:7px 10px;display:inline-block}
+.shaft{margin-top:12px;border:1px dashed var(--line2);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--muted);text-align:center}
+.shaft b{color:var(--ink)}
+.oneline{margin-top:32px;padding:18px 20px;border-radius:14px;border:1px solid var(--line2);background:var(--card);font-size:15px}
+.oneline b{color:var(--accent)}
+@media(prefers-reduced-motion:reduce){.chev{transition:none}}
+@media(max-width:560px){.reveal{padding-left:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero" id="hero" data-anchor="hero">
+    <div class="eyebrow">🔱 Trident · first principles</div>
+    <h1>Why long building sessions fail, and the design forced by each failure.</h1>
+    <p class="lede">Trident isn't a bundle of features. Start from how a long autonomous build actually breaks, and each prong is the only answer left standing.</p>
+  </header>
+
+  <div class="bar">
+    <span class="hint">Click any card to reveal the derivation.</span>
+    <button class="toggle" id="toggleAll">open all</button>
+  </div>
+
+  <h2 id="h-argument" data-anchor="section:argument">The argument · each failure forces one response</h2>
+  <div id="deriv"></div>
+
+  <h2 id="h-prongs" data-anchor="section:prongs">Three prongs, loyal to different masters</h2>
+  <p class="body">The checks stay honest only if no prong can be captured. Each answers to a different thing, and none both builds the work and blesses it.</p>
+  <div id="prongs"></div>
+  <div class="shaft" id="shaft" data-anchor="shaft">The shaft binding the three: <b>one failures log</b>. Every prong reads and writes it, so quality compounds instead of repeating.</div>
+
+  <h2 id="h-walkthrough" data-anchor="section:walkthrough">Walkthrough · a real long build (parse_config, with a security must)</h2>
+  <p class="body">Task: build a config parser over many rounds, with a hard rule set on round 1 (reject any key starting with <code>__</code>). Below is what actually ran (RESULT-05). Click a step.</p>
+  <div id="steps"></div>
+
+  <div class="oneline" id="oneline" data-anchor="oneline">Nothing in Trident is a feature you could drop. Each prong is the forced answer to a way long sessions break: <b>intent decays, context rots, optimism lies, the goal drifts</b>. Hold intent out-of-band, judge with a different model, keep loops small and gated, and prove every claim.</div>
+</div>
+<!-- ===== AGENTATION INTEGRATION SLOT =====================================================
+     If Agentation gives you an embeddable <script> snippet, paste it on the next line.
+     (A browser extension needs nothing here.) Do not add a guessed URL; use the real snippet
+     from https://www.agentation.com so nothing phones home to the wrong place.
+     ====================================================================================== -->
+<script>
+const DERIV=[
+ {fail:"Intent decays under recency",conseq:"early goals get buried",what:"The model weights recent tokens most, so the goal and the corrections you made early quietly lose salience as the session grows.",ev:"CF-009 / 042 / 045",resp:"An agent whose only job is to hold your intent, loyal to you, re-asserted every loop so it can't be buried.",tag:"Simba"},
+ {fail:"One long context rots",conseq:"degradation + instruction collision",what:"A single growing window fills with history, superseded versions, and tool output; signal-to-noise falls and instruction sets blend.",ev:"CF-009 / 011",resp:"Split the work into many small bounded loops, each rehydrated from typed artifacts, with no prong seeing another's scratch.",tag:"scoped loops + context-contract"},
+ {fail:"Optimism lies",conseq:"the maker grades itself high",what:"A model assessing its own output inflates 15 to 20 points and declares done when it isn't.",ev:"CF-010",resp:"A judge that is a different model, running deterministic checks before any rubric-judge, and failing closed.",tag:"Auditor · Fable"},
+ {fail:"Wrong objective is costliest",conseq:"build the wrong thing, correctly",what:"The goal can be mis-specified from the start or drift mid-session; every downstream round then optimizes the wrong target.",ev:"CF-057",resp:"Gate both feasibility and intent-consistency before any build begins; hard-block on a conflict.",tag:"Phase-0 gate"},
+ {fail:"Compaction can drop an invariant",conseq:"a must-have lost while summarizing",what:"Compressing context to save tokens can silently delete a hard requirement that lived only in the discarded history.",ev:"CF-042 / 045",resp:"Keep invariants out-of-band, and run each invariant as an executable check before promoting a compacted state.",tag:"fail-closed gate"},
+ {fail:"Failures repeat",conseq:"no memory across sessions",what:"The same mistake recurs because nothing turned the last one into a durable check.",ev:"the SSOT",resp:"One shared failures log; every real mistake becomes a permanent deterministic guard the Auditor runs.",tag:"failures.jsonl"},
+];
+const PRONGS=[
+ {n:"Do-er · Opus",loyal:"loyal to: shipping",detail:"Does the actual work. Deliberately kept off its own scorecard, because the maker is the optimist.",never:"never grades its own output"},
+ {n:"Simba",loyal:"loyal to: you",detail:"Holds a durable IntentCard, reads the Do-er's output (never its reasoning), and flags drift from your intent.",never:"never edits, argues, or acts on drift itself. It proposes; the Auditor disposes."},
+ {n:"Auditor · Fable",loyal:"loyal to: the artifact",detail:"A different model from the Do-er. Runs deterministic detectors first, a rubric-judge last, and decides the response to drift.",never:"never free-form self-assessment, and never the Do-er's model"},
+];
+const STEPS=[
+ {phase:"Phase 0",h:"Prove it's feasible and correctly aimed, before building",p:"Simba pins the IntentCard (goal + the __ must-have + 'never weaken it'). The Do-er lists assumptions; the Auditor names the riskiest and the cheapest probe.",real:"probe: extract + execute a Do-er's code → passed, so the build proceeds"},
+ {phase:"Loops 1–3",h:"Build one feature per bounded loop, rehydrating context",p:"Each round the Do-er sees only the frozen packet + current code + this round's delta, not the whole transcript.",real:"measured: accumulate +1191 chars/round · contract +181/round"},
+ {phase:"Drift guard",h:"The pinned intent keeps the must-have salient",p:"Because the invariant lived in Simba's IntentCard, out-of-band and re-asserted, it stayed in view as features piled on. The contract arm defended it proactively.",real:"contract arm extended __ rejection to [section] names · full-history arm left [__proto__] open"},
+ {phase:"Compaction",h:"Past the crossover, compact history behind a gate",p:"Once per-round history outweighs the artifact (around round 4), drop the history. Before promoting, execute the invariant. A lossy compaction is blocked by construction.",real:"cut 31% at R3 → 43% at R4 → 56% at R6 · gate: BLOCK lossy, PROMOTE intact (6/6)"},
+ {phase:"Audit + close",h:"A different model certifies, fail-closed; a new failure becomes a check",p:"The Fable Auditor ran the deterministic tests and certified the verdict, refusing to let an unregistered bonus finding upgrade it.",real:"verdict honored the pre-registered bar: efficiency FAIL, safety PASS"},
+];
+// Stable anchors so Agentation's captured selector maps 1:1 to a source block (grep the id / data-anchor).
+const slug=(s)=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+document.getElementById('deriv').innerHTML=DERIV.map((d,i)=>`
+<details id="d-${slug(d.fail)}" data-anchor="DERIV[${i}] ${d.tag}"><summary><span class="idx">${String(i+1).padStart(2,'0')}</span><div class="sum"><div class="t">${d.fail}</div><div class="c">${d.conseq}</div></div><span class="chev">▸</span></summary>
+<div class="reveal">
+  <div class="lab">What happens<span class="ev">${d.ev}</span></div><p>${d.what}</p>
+  <div class="resp"><div class="lab" style="margin-top:0">The forced response</div><div class="rt">${d.resp}</div><span class="tag">${d.tag}</span></div>
+</div></details>`).join('');
+document.getElementById('prongs').innerHTML=PRONGS.map((p,i)=>`
+<details id="p-${slug(p.n)}" data-anchor="PRONGS[${i}] ${p.n}"><summary><div class="sum"><div class="t">${p.n}</div></div><span class="loyal">${p.loyal}</span><span class="chev">▸</span></summary>
+<div class="reveal"><p>${p.detail}</p><div class="never"><b>Never:</b> ${p.never}</div></div></details>`).join('');
+document.getElementById('steps').innerHTML=STEPS.map((s,i)=>`
+<details id="s-${slug(s.phase)}" data-anchor="STEPS[${i}] ${s.phase}"><summary><span class="idx">${s.phase}</span><div class="sum"><div class="t">${s.h}</div></div><span class="chev">▸</span></summary>
+<div class="reveal"><p>${s.p}</p><div class="real">${s.real}</div></div></details>`).join('');
+// open all / collapse all
+const btn=document.getElementById('toggleAll');
+btn.addEventListener('click',()=>{
+  const all=[...document.querySelectorAll('details')];
+  const anyClosed=all.some(d=>!d.open);
+  all.forEach(d=>d.open=anyClosed);
+  btn.textContent=anyClosed?'collapse all':'open all';
+});
+</script>
+</body>
+</html>

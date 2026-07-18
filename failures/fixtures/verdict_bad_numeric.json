@@ -1,0 +1,6 @@
+{
+  "dimensions": [
+    {"name": "quality", "verdict": "pass", "score": 3},
+    {"name": "overall", "verdict": "pass", "rating": "4/5"}
+  ]
+}

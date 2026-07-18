@@ -9,7 +9,7 @@ out of scope by the pure-skill decision).
 | Phoenix | Trident equivalent |
 |---|---|
 | **Tracing** (OTel/OpenInference spans: input, output, status, error, tokens) | the Do-er's `Spans`; the CF `trace` field |
-| **Evaluation** (code-based / LLM-based / human-label evaluators) | the Auditor's deterministic+structural / Fable-judge / your approval |
+| **Evaluation** (code-based / LLM-based / human-label evaluators) | the Auditor's deterministic+structural / Sonnet 5-judge / your approval |
 | **Datasets** (curate failure cases) | `failures.jsonl` — the curated failure SSOT |
 | **Experiments** (run evaluators over a dataset) | re-running detectors over the SSOT as a regression suite (`tests/`) |
 

@@ -6,7 +6,7 @@ rule here, not in each skill** (the anti-drift discipline — FL-cf001, FL-cf011
 ## The invariants (each traces to a real failure)
 0. **Riskiest assumption first (hard block).** No build of any kind starts until the single riskiest
    assumption — ranked by kill-power × uncertainty — is proven by the cheapest falsifying probe. The
-   Auditor (Fable) owns the feasibility gate; Simba owns the intent gate; the Do-er runs the probe but
+   Auditor (Sonnet 5) owns the feasibility gate; Simba owns the intent gate; the Do-er runs the probe but
    never self-approves. On probe fail → stop, report, log a CF (FL-cf056, FL-cf044, FL-cf039).
 1. **Deterministic first.** Any guard is enforced by the highest-reliability detector available:
    deterministic root-cause > deterministic detection > LLM-judge > written reminder (FL-cf051).
@@ -15,8 +15,11 @@ rule here, not in each skill** (the anti-drift discipline — FL-cf001, FL-cf011
 3. **Narrated ≠ executed.** A sentence claiming a write is followed, same turn, by the tool call
    (FL-cf046).
 4. **Done ⇒ acceptance artifact.** Never mark complete on handoff (FL-cf025).
-5. **No self-grading free-form.** The Auditor is a different model (Fable) and scores per-rubric-dimension
-   (FL-cf010). Fail closed on no verdict (FL-cf049).
+5. **No self-grading free-form.** The Auditor is a different model (Sonnet 5) from the Do-er (Opus) and emits
+   **per-dimension binary PASS/FAIL** — never a numeric/Likert score, never a free-form verdict (FL-cf010,
+   PD-001). Fail closed on no verdict (FL-cf049). The separation is *same-family* (Sonnet 5 vs Opus), not
+   cross-provider — a cross-provider judge is reachable but declined as default for portability (PD-005) — so
+   deterministic detectors carry the real decorrelation, not the judge (PD-003).
 6. **Reversibility gate.** Classify each action; irreversible ones need explicit approval + blast-radius
    (FL-cf013).
 7. **Read before assert.** Never claim a path/record/quote exists without reading it (FL-cf015, FL-cf052).
@@ -30,9 +33,13 @@ rule here, not in each skill** (the anti-drift discipline — FL-cf001, FL-cf011
 13. **No premature all-clear.** An eval yields "good/validated" only with hard-negative traps present, the
     discriminator kept out of the subject's prompt, and a known-bad control that actually failed; otherwise
     the verdict is "not-yet-validated," never "good" (CF-060, CF-061).
+14. **An unvalidated judge is not a gate.** A rubric judge's verdict counts only once the judge clears a
+    per-class **TNR bar** on a human-labeled slice (catch the agreeableness bias: high TPR, collapsed TNR =
+    silent false-PASS). Not-yet-validated → fail closed to a human check or Do-er re-loop (PD-002).
 
-> Rung note: 1 is enforceable by code; 11–13 are reminder/structural guards — they lower recurrence, they
+> Rung note: 1 is enforceable by code; 11–14 are reminder/structural guards — they lower recurrence, they
 > do not make it impossible. A model can still read a rule and break it; only a wired-in check is a gate.
+> 14's TNR bar is itself the wired-in check that turns judge rule 5 from a reminder into a measured gate.
 
 ## Portability guardrails (do not break)
 - No build, no dependencies — installs as a plain skills tree. Orchestration uses subagents, so the runtime surface is Claude Code / VS Code.
