@@ -50,6 +50,26 @@ rc_ids = set(re.findall(r"RC-(CF-\d{3,})", open(RCASES).read()))
 missing = [rc for rc in rc_ids if rc not in set(ids)]
 check(not missing, "every regression case maps to a real CF" + (f" (orphans: {missing})" if missing else ""))
 
+# --- decisions ledger: meta-scope gate + PD regression cross-reference ---
+sys.path.insert(0, os.path.join(ROOT, "failures"))
+import validate_decisions as vd
+for ok, msg in vd.validate_all():
+    check(ok, msg)
+pd_ids = {r["id"] for _, r in vd._load_jsonl(vd.LEDGER)}
+rc_pd = set(re.findall(r"RC-(PD-\d{3,})", open(RCASES).read()))
+missing_pd = [rc for rc in rc_pd if rc not in pd_ids and rc != "PD-scope"]
+check(not missing_pd, "every PD regression case maps to a real PD" + (f" (orphans: {missing_pd})" if missing_pd else ""))
+
+# --- PD-002: the TNR judge-validation gate must discriminate ---
+import tnr
+for ok, msg in tnr.validate_all():
+    check(ok, msg)
+
+# --- PD-004: versioned rubric registry + silent-edit detector ---
+import rubrics
+for ok, msg in rubrics.validate_all():
+    check(ok, msg)
+
 # --- no personal data in the committed log ---
 blob = open(JSONL).read()
 leaks = [p for p in ("/Users/", "devanshpathak") if p in blob]

@@ -38,4 +38,4 @@ open detector to the user — never loop silently, never pass to escape the loop
 persistent: retry the real failure, don't reroute around it).
 
 > TODO after approval: exact retry bound, artifact serialization format, how prongs are spawned as
-> subagents in Claude Code / VS Code (Do-er, Fable Auditor, Simba).
+> subagents in Claude Code / VS Code (Do-er, Sonnet 5 Auditor, Simba).

@@ -46,7 +46,7 @@ A single agent is optimistic about its own output (FL-cf010): it inflates 15–2
 pass. Trident makes the checks **adversarial**, so a claim has to survive an agent that is *trying to break
 it*, not the agent that made it.
 
-- **The judge is a different model.** The Auditor is **Fable**, never the Do-er (Opus). It grades the
+- **The judge is a different model.** The Auditor is **Sonnet 5**, never the Do-er (Opus). It grades the
   artifact, and it never saw the Do-er's reasoning, so it can't be talked into grading the effort.
 - **Refute-by-default.** The Auditor **fails closed**: any claim it can't verify is a fail, not a pass. On a
   hard question, spin independent skeptics and kill the claim unless a majority survives.
@@ -71,7 +71,7 @@ pointed at a *different* master, and no prong can both do the work and bless it.
 |---|---|---|---|
 | **Do-er** (Opus) | shipping the task | grade its own output | the maker is the optimist; keep it off the scorecard |
 | **Simba** | *you* (the user) | read the Do-er's reasoning, or act on drift itself | if it saw the reasoning it could be argued out of your intent; it stays your memory, not the Do-er's |
-| **Auditor** (Fable) | the artifact + the failures log | be the Do-er's model, or grade effort | a different model can't rationalize its own work |
+| **Auditor** (Sonnet 5) | the artifact + the failures log | be the Do-er's model, or grade effort | a different model can't rationalize its own work |
 
 - **Separation of powers.** *"Simba proposes, the Auditor disposes."* Simba detects drift and emits a
   `DriftFlag`; it never edits, never argues, never halts. The Auditor holds the single point of authority

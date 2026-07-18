@@ -98,7 +98,7 @@ ideation, scoring, all artifacts, the dual-track build plan) runs unattended to 
    (CF-057); otherwise silent.
 3. **Pick from the top-3** — the DECIDE step is the user's taste, not the score's (a HARD stop by design).
 
-Residual risks to surface, never hide: inflated winner (mitigated by independent Fable audit, fail-closed),
+Residual risks to surface, never hide: inflated winner (mitigated by independent Sonnet 5 audit, fail-closed),
 unverified anchor intel (tag every `unverified-fetch`), and **stale facts** (anchors/events perish — add a
 freshness note on any fact older than the event cycle). Emit a **hands-free readiness artifact** (failure
 modes + the 3 gates) so the user knows exactly where it will pause.

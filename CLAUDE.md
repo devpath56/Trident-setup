@@ -7,7 +7,7 @@ this repo. Its orchestration spawns real subagents, so the runtime surface is Cl
 
 ## What it is
 Three prongs watching any working session: a **Do-er** (Opus), **Simba** (loyal to the user, guards
-intent), and an **Auditor** (Fable, deterministic evaluators first). They share one **failures log**
+intent), and an **Auditor** (Sonnet 5, deterministic evaluators first). They share one **failures log**
 (`failures/failures.jsonl`) — every real mistake becomes a check that stops it recurring. See
 `README.md` for the pitch and `ARCHITECTURE.md` for the full design.
 
@@ -51,5 +51,5 @@ The suite only ever grows from real errors.
 - **No build, no deps.** Keep install trivial (a skills tree). Orchestration uses subagents — a Claude Code / VS Code capability; don't add machinery that assumes another surface.
 - **No personal data, no external paths in any committed record.** Re-scan before every commit —
   grep the working set for your home-dir prefix, private workspace names, and company names; block on any hit.
-- **Deterministic detectors before any LLM-judge.** The Auditor (Fable) is never the Do-er (Opus).
+- **Deterministic detectors before any LLM-judge.** The Auditor (Sonnet 5) is never the Do-er (Opus).
 - **Keep skills co-located** under one `.claude/skills/` tree so `../references/…` resolves.

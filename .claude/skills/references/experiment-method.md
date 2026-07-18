@@ -36,7 +36,7 @@ run needed it. Use this whenever a proposal must be *proven*, not asserted — a
    (can a Do-er's output be extracted and executed here?) before spending the whole budget (CF-056). Round 1
    often doubles as this probe.
 
-8. **Certify with an independent, fail-closed auditor.** A *different model* (Fable, never the Opus Do-er)
+8. **Certify with an independent, fail-closed auditor.** A *different model* (Sonnet 5, never the Opus Do-er)
    scores each criterion and the conjunction, and fails closed on anything unproven. It also guards honesty:
    in RESULT-05 the auditor refused to let an un-pre-registered bonus finding or a different (R3-alone)
    metric upgrade the verdict.
@@ -62,5 +62,5 @@ run needed it. Use this whenever a proposal must be *proven*, not asserted — a
 ## Template
 Copy `experiments/EXP-context-contract.md` as the pre-registration shape (claim · falsifiability · fixture ·
 arms · metrics · pre-registered PASS table · anticipated-failures primer), and `RESULT-05-context-contract.md`
-as the verdict shape (Fable-certified scorecard · what happened · honest caveats · decision faithful to the
+as the verdict shape (auditor-certified scorecard · what happened · honest caveats · decision faithful to the
 pre-registration).
