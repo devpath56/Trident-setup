@@ -58,10 +58,13 @@ reasoning (PD-006).
    - **Enforced deterministically:** `validate_prongs.py` HR-0 rejects any `probe` row with no
      `ratverdict` before it in the same run. Nothing can be built or probed before its RAT.
 
-**Every build phase opens with its own RAT.** Phase 1 and each correction round (Phase 3) each
-run rat.mjs first: the same three first-principles adversarial questions (should I build this? what
-is the riskiest assumption I am missing? what is the cheapest probe to falsify it?) before a line
-of that phase is written. A new phase with a new risk gets a new RAT.
+**Every phase opens with its own RAT, not just Phase 0.** Phase 1 (build), Phase 2 (audit), and
+each correction round (Phase 3) each run rat.mjs first with their own `--phase`: the same three
+first-principles adversarial questions (should I build this? what is the riskiest assumption I am
+missing? what is the cheapest probe to falsify it?) before a line of that phase is written.
+**Enforced:** every work artifact (a `probe` for Phase 0, a `verdict` for audit/correct) carries a
+`phase`, and `validate_prongs.py` HR-0 rejects any that has no RATVerdict for that same phase before
+it. A single Phase-0 RAT no longer covers the run. Forward-only: work predating the gate is exempt.
 
 **Phase 1 — Build**
 6. Spawn **Do-er** (Opus): input = task + `IntentCard` (honor must_haves / forbid / pinned_feedback).

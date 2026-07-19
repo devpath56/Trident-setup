@@ -117,7 +117,12 @@ Nested bullets and a table only, no prose paragraphs (house-rule 16).
 - then one line: APPROVED or REJECTED, with a one-line reason
 
 Then append your Verdict to prongs/prongs.jsonl as one JSON line:
-{"id":"v-<short>","kind":"verdict","ts":"<iso>","runId":"${runId}","intentCardId":"${intent.id}","resolves":[${drifts.map((d) => `"${d.id}"`).join(',')}],"detectors":[{"detector_id":"...","result":"pass|fail","signal_seen":"..."}],"grader_model":"sonnet","subject_model":"opus","irreversible":[]}
+{"id":"v-<short>","kind":"verdict","ts":"<iso>","runId":"${runId}","phase":"audit","intentCardId":"${intent.id}","resolves":[${drifts.map((d) => `"${d.id}"`).join(',')}],"detectors":[{"detector_id":"...","result":"pass|fail","signal_seen":"..."}],"grader_model":"sonnet","subject_model":"opus","irreversible":[]}
+
+The \`phase\` field is REQUIRED: the audit is its own phase and must be opened by its own RAT.
+Before you rule, confirm a RATVerdict for phase "audit" of this run exists (run
+\`node prongs/rat.mjs --run ${runId} --phase audit ...\` if not). validate_prongs HR-0 rejects a
+verdict in a phase with no RAT opening it: a RAT opens EVERY phase, not just Phase 0.
 
 The \`irreversible\` field is REQUIRED (house-rule 6). It lists any irreversible action you took
 (you should take none: you verify, you do not mutate), each as {action, approved_by}. An empty

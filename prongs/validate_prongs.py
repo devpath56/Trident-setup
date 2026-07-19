@@ -226,7 +226,11 @@ def check_rule6_reversibility(rows):
 #       the phase was built before the riskiest assumption was tested, which is the failure
 #       house-rule 0 exists to prevent.
 # It gates the artifact and its ordering, not whether the assumption was genuinely the riskiest.
-RAT_FROM = "2026-07-19T13:00:00Z"  # rat.mjs shipped; probes before this predate it (forward-only)
+RAT_FROM = "2026-07-19T13:00:00Z"    # rat.mjs shipped; probes before this predate it (forward-only)
+PHASE_FROM = "2026-07-20T00:00:00Z"  # RAT-per-phase shipped end of 2026-07-19; work before this
+#                                      predates the per-phase gate and is exempt (gates apply forward,
+#                                      never backfilled: the durable-push close verdict v-6f0c111c is
+#                                      from before this rule and is not retro-tagged with a fake RAT).
 
 
 def check_rat(rows):
@@ -239,16 +243,35 @@ def check_rat(rows):
                 problems.append(f"ratverdict {r.get('id')}: {field} is empty or a placeholder (house-rule 0)")
         if r.get("push_decision") not in ("proceed", "hold"):
             problems.append(f"ratverdict {r.get('id')}: push_decision must be proceed|hold (house-rule 0)")
-    # nothing built before its RAT: every probe needs a RAT before it in the same run.
-    # Scoped FORWARD (gates apply forward, never backfilled to go green): probes written before
-    # rat.mjs existed are not retro-failed. p-a3 (the A3 agentation probe, 2026-07-19T10:00)
-    # predates the mechanism and is exempt; inventing a RAT for it would be ceremony.
-    for p in [r for r in rows if r.get("kind") == "probe" and r.get("ts", "") >= RAT_FROM]:
+    # nothing built before its RAT: a probe in the RAT_FROM..PHASE_FROM window needs SOME RAT
+    # before it (the original Phase-0 rule). Forward-only: probes predating rat.mjs are exempt.
+    for p in [r for r in rows if r.get("kind") == "probe" and RAT_FROM <= r.get("ts", "") < PHASE_FROM]:
         prior = [r for r in rats if r.get("runId") == p.get("runId") and r.get("ts", "") <= p.get("ts", "")]
         if not prior:
             problems.append(
                 f"probe {p.get('id')} at {p.get('ts','')[:16]} has no RATVerdict before it in run "
                 f"{p.get('runId')}: something was built/probed before its RAT (house-rule 0)"
+            )
+
+    # RAT PER PHASE (not just Phase 0). From PHASE_FROM on, every work artifact (probe = Phase 0,
+    # verdict = audit/correct phases) must NAME its phase and be opened by a RATVerdict for that
+    # same phase, before it. A single Phase-0 RAT no longer covers the whole run: each phase is
+    # opened by its own RAT or its work is rejected. The build phase leaves no row, so it is
+    # gated through the verdict that audits it (which carries the phase and needs its RAT).
+    for w in [r for r in rows if r.get("kind") in ("probe", "verdict") and r.get("ts", "") >= PHASE_FROM]:
+        ph = w.get("phase")
+        if _blank(ph):
+            problems.append(
+                f"{w.get('kind')} {w.get('id')} has no phase label. Every phase's work must name its "
+                f"phase so the RAT-per-phase gate can check it (house-rule 0)"
+            )
+            continue
+        opened = [r for r in rats if r.get("runId") == w.get("runId")
+                  and r.get("phase") == ph and r.get("ts", "") <= w.get("ts", "")]
+        if not opened:
+            problems.append(
+                f"{w.get('kind')} {w.get('id')} is in phase '{ph}' with no RATVerdict opening that "
+                f"phase in run {w.get('runId')}: a RAT opens EVERY phase, not just Phase 0 (house-rule 0)"
             )
     return problems
 
@@ -340,9 +363,11 @@ def controls():
         base.update(kw)
         return base
     pr = lambda **kw: {"id": "pX", "kind": "probe", "ts": "2026-07-20T01:00:00Z", "runId": "r",
-                       "riskiest": "x", "result": "PASS", **kw}
+                       "phase": "build", "riskiest": "x", "result": "PASS", **kw}
+    vr = lambda **kw: {"id": "vX", "kind": "verdict", "ts": "2026-07-20T03:00:00Z", "runId": "r",
+                       "phase": "audit", **kw}
 
-    out.append(("HR-0 accepts a well-formed RAT + a probe after it (positive control)",
+    out.append(("HR-0 accepts a well-formed RAT + a same-phase probe after it (positive control)",
                 not check_rat([rat(), pr()])))
     out.append(("HR-0 rejects a RAT with a placeholder riskiest_assumption",
                 bool(check_rat([rat(riskiest_assumption="TBD")]))))
@@ -354,8 +379,15 @@ def controls():
                 bool(check_rat([pr()]))))
     out.append(("HR-0 rejects a probe whose only RAT comes AFTER it",
                 bool(check_rat([rat(ts="2026-07-20T02:00:00Z"), pr()]))))
-    out.append(("HR-0 does NOT retro-fail a probe that predates rat.mjs (gates apply forward)",
-                not check_rat([pr(ts="2026-07-19T10:00:00Z")])))
+    out.append(("HR-0 does NOT retro-fail work that predates the gate (gates apply forward)",
+                not check_rat([pr(ts="2026-07-19T10:00:00Z", phase=None)])))
+    # RAT PER PHASE
+    out.append(("HR-0 accepts an audit verdict opened by its own phase RAT",
+                not check_rat([rat(phase="audit", ts="2026-07-20T02:00:00Z"), vr()])))
+    out.append(("HR-0 rejects an audit verdict whose only RAT is for a DIFFERENT phase (build)",
+                bool(check_rat([rat(phase="build"), vr()]))))
+    out.append(("HR-0 rejects a forward work artifact with NO phase label",
+                bool(check_rat([pr(phase=None)]))))
     return out
 
 
