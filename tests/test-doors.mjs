@@ -65,6 +65,22 @@ append({ id: 'v-right', kind: 'verdict', ts: '2026-07-20T00:01:00Z', runId: 'r',
          intentCardId: intentId, detectors: [{ detector_id: 'd', result: 'pass', signal_seen: 'observed' }] });
 check('close SUCCEEDS once a verdict cites the real IntentCard', run('close-session.mjs', ['r']).status === 0);
 
+// ── rat.mjs: the phase-opener (house-rule 0) ──────────────────────────────────
+// Exercised here so removing rat.mjs fails selftest (otherwise the tool is an orphan while
+// only its gate is wired). Fresh run id so it does not collide with the door test above.
+check('rat REFUSES a placeholder riskiest assumption',
+  run('rat.mjs', ['--run', 'rat-r', '--phase', 'build', '--push', 'proceed',
+                  '--riskiest', 'TBD', '--probe', 'grep the scripts for the thing']).status === 2);
+check('rat REFUSES with no push decision',
+  run('rat.mjs', ['--run', 'rat-r', '--phase', 'build',
+                  '--riskiest', 'the phase unit may not exist', '--probe', 'grep schema for phase']).status === 2);
+check('rat RECORDS a well-formed RATVerdict',
+  run('rat.mjs', ['--run', 'rat-r', '--phase', 'build', '--push', 'proceed',
+                  '--riskiest', 'the phase unit may not exist to gate on', '--probe', 'grep schema and ledger for phase']).status === 0);
+check('rat REFUSES re-opening the same phase (riskiest assumption cannot be swapped)',
+  run('rat.mjs', ['--run', 'rat-r', '--phase', 'build', '--push', 'proceed',
+                  '--riskiest', 'a different assumption entirely here', '--probe', 'a different probe entirely here']).status === 2);
+
 fs.rmSync(path.dirname(ledger), { recursive: true, force: true });
 console.log(`\nRESULT: ${fails ? `${fails} FAIL` : 'PASS'}`);
 process.exit(fails ? 1 : 0);

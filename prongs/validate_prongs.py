@@ -218,6 +218,41 @@ def check_rule6_reversibility(rows):
     return problems
 
 
+# ── house-rule 0: the RAT opens every phase BEFORE anything is built ──────────
+# rat.mjs writes a RATVerdict at the start of a phase. This enforces two things:
+#   (a) the RAT is real: riskiest_assumption and cheapest_probe are present and not placeholders
+#   (b) nothing is built before its RAT: every probe row (a run/falsify event) must have a
+#       RATVerdict in the same run TIMESTAMPED BEFORE it. A probe with no preceding RAT means
+#       the phase was built before the riskiest assumption was tested, which is the failure
+#       house-rule 0 exists to prevent.
+# It gates the artifact and its ordering, not whether the assumption was genuinely the riskiest.
+RAT_FROM = "2026-07-19T13:00:00Z"  # rat.mjs shipped; probes before this predate it (forward-only)
+
+
+def check_rat(rows):
+    problems = []
+    rats = [r for r in rows if r.get("kind") == "ratverdict"]
+    for r in rats:
+        for field in ("riskiest_assumption", "cheapest_probe"):
+            v = r.get(field, "")
+            if _blank(v) or len(str(v).strip()) < 12:
+                problems.append(f"ratverdict {r.get('id')}: {field} is empty or a placeholder (house-rule 0)")
+        if r.get("push_decision") not in ("proceed", "hold"):
+            problems.append(f"ratverdict {r.get('id')}: push_decision must be proceed|hold (house-rule 0)")
+    # nothing built before its RAT: every probe needs a RAT before it in the same run.
+    # Scoped FORWARD (gates apply forward, never backfilled to go green): probes written before
+    # rat.mjs existed are not retro-failed. p-a3 (the A3 agentation probe, 2026-07-19T10:00)
+    # predates the mechanism and is exempt; inventing a RAT for it would be ceremony.
+    for p in [r for r in rows if r.get("kind") == "probe" and r.get("ts", "") >= RAT_FROM]:
+        prior = [r for r in rats if r.get("runId") == p.get("runId") and r.get("ts", "") <= p.get("ts", "")]
+        if not prior:
+            problems.append(
+                f"probe {p.get('id')} at {p.get('ts','')[:16]} has no RATVerdict before it in run "
+                f"{p.get('runId')}: something was built/probed before its RAT (house-rule 0)"
+            )
+    return problems
+
+
 # ── negative controls ─────────────────────────────────────────────────────────
 def controls():
     out = []
@@ -295,6 +330,32 @@ def controls():
     out.append(("HR-6 does NOT retro-fail a verdict written before the field existed",
                 not check_rule6_reversibility([{k: x for k, x in v(ts="2026-07-19T12:00:00Z")[0].items()
                                                 if k != "irreversible"}])))
+
+    # --- house-rule 0: RAT opens each phase ---
+    def rat(**kw):
+        base = {"id": "ratX", "kind": "ratverdict", "ts": "2026-07-20T00:00:00Z", "runId": "r",
+                "phase": "build", "riskiest_assumption": "the ledger path is hardcoded so tests pollute it",
+                "cheapest_probe": "grep the door scripts for an env override", "gate": "hard",
+                "push_decision": "proceed"}
+        base.update(kw)
+        return base
+    pr = lambda **kw: {"id": "pX", "kind": "probe", "ts": "2026-07-20T01:00:00Z", "runId": "r",
+                       "riskiest": "x", "result": "PASS", **kw}
+
+    out.append(("HR-0 accepts a well-formed RAT + a probe after it (positive control)",
+                not check_rat([rat(), pr()])))
+    out.append(("HR-0 rejects a RAT with a placeholder riskiest_assumption",
+                bool(check_rat([rat(riskiest_assumption="TBD")]))))
+    out.append(("HR-0 rejects a RAT with an empty cheapest_probe",
+                bool(check_rat([rat(cheapest_probe="")]))))
+    out.append(("HR-0 rejects a RAT with an invalid push_decision",
+                bool(check_rat([rat(push_decision="maybe")]))))
+    out.append(("HR-0 rejects a probe with NO RAT before it (built before the RAT)",
+                bool(check_rat([pr()]))))
+    out.append(("HR-0 rejects a probe whose only RAT comes AFTER it",
+                bool(check_rat([rat(ts="2026-07-20T02:00:00Z"), pr()]))))
+    out.append(("HR-0 does NOT retro-fail a probe that predates rat.mjs (gates apply forward)",
+                not check_rat([pr(ts="2026-07-19T10:00:00Z")])))
     return out
 
 
@@ -315,6 +376,7 @@ def main():
         ("HR-10 no leaked reasoning in a verdict", check_rule10_unleaked(rows)),
         ("HR-12 grader is not the subject", check_rule12_not_self_graded(rows)),
         ("HR-6 irreversible actions are approved", check_rule6_reversibility(rows)),
+        ("HR-0 RAT opens each phase before any build", check_rat(rows)),
     ]:
         if probs:
             failed += 1

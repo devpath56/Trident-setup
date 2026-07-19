@@ -50,8 +50,18 @@ reasoning (PD-006).
    assumption, each tagged {type, kill_power 1–5, uncertainty 1–5}. **It does not build yet.**
 3. Spawn **Auditor** (Sonnet 5): input = `AssumptionSet` + `IntentCard`. → returns `RATVerdict`
    {riskiest (max kill_power × uncertainty), probe (the smallest command/read that could prove it impossible), pass_criteria}.
-4. Run the probe (directly, or a scoped Do-er). Evaluate against `pass_criteria`.
+   - **Record it with `node prongs/rat.mjs --run <id> --phase <name> --push proceed|hold --riskiest "..." --probe "..."`.**
+     The RAT is the phase-opener: a phase has started only once its RATVerdict exists (there is no
+     separate "phase" object to gate, the RAT IS the boundary). rat.mjs refuses placeholders.
+4. Run the probe (directly, or a scoped Do-er). Evaluate against `pass_criteria`. Log its result as a `probe` row.
 5. **GATE:** fail → **STOP**, report to the user, `log failure`. pass → continue. *(Never skip this.)*
+   - **Enforced deterministically:** `validate_prongs.py` HR-0 rejects any `probe` row with no
+     `ratverdict` before it in the same run. Nothing can be built or probed before its RAT.
+
+**Every build phase opens with its own RAT.** Phase 1 and each correction round (Phase 3) each
+run rat.mjs first: the same three first-principles adversarial questions (should I build this? what
+is the riskiest assumption I am missing? what is the cheapest probe to falsify it?) before a line
+of that phase is written. A new phase with a new risk gets a new RAT.
 
 **Phase 1 — Build**
 6. Spawn **Do-er** (Opus): input = task + `IntentCard` (honor must_haves / forbid / pinned_feedback).
