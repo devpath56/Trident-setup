@@ -37,9 +37,34 @@ rule here, not in each skill** (the anti-drift discipline — FL-cf001, FL-cf011
     per-class **TNR bar** on a human-labeled slice (catch the agreeableness bias: high TPR, collapsed TNR =
     silent false-PASS). Not-yet-validated → fail closed to a human check or Do-er re-loop (PD-002).
 
+15. **Ask scope first, then intent — never infer either.** No Trident session starts from an inferred
+    goal or an unbounded surface. Simba's first act in a new session is to ask, verbatim,
+    **"what's the scope for this session?"** — capturing BOTH `in_scope` and `out_of_scope`, because a
+    scope with no exclusions is not a scope. Only then does it ask what they are trying to get. The
+    `IntentCard` is built from their answers — prior messages are corroboration, never the source. An IntentCard whose `goal` was
+    derived without a user answer in the same session is not a valid gate input; fail closed and ask
+    (PD-007). **Exception, narrowly scoped** — an instruction to skip the ask counts only if it:
+    (a) names *skipping the intent question* specifically — a generic "go ahead", "ok", or "do it" is
+    **not** a waiver and must never be read as one; (b) is scoped to the decision at hand, **never** a
+    standing waiver for the session; and (c) is re-confirmed when a materially new decision arises that
+    the original instruction did not cover. Record the instruction verbatim in `pinned_feedback`.
+16. **Nested bullets and tables only.** Every Trident-authored surface — orchestrator reports, `IntentCard`,
+    `AssumptionSet`, `RATVerdict`, `Verdict`, `DriftFlag` — is written as **nested bullets or tables**.
+    No prose paragraphs, no essay narration. A field that needs explaining gets a sub-bullet, not a
+    sentence of commentary. **Carve-out:** verbatim quoted evidence (`DriftFlag.evidence`, a quoted user
+    instruction) and connected multi-sentence judge reasoning are compliant **inside a bullet or table
+    cell** — the requirement is structural containment, not sentence-count austerity. Rationale: prong
+    outputs are read as artifacts and diffed between loops; prose hides structure and lets a claim slip
+    through unattributed (PD-007).
+
 > Rung note: 1 is enforceable by code; 11–14 are reminder/structural guards — they lower recurrence, they
 > do not make it impossible. A model can still read a rule and break it; only a wired-in check is a gate.
 > 14's TNR bar is itself the wired-in check that turns judge rule 5 from a reminder into a measured gate.
+> 15 and 16 are gated by `failures/intent_gate.py` (executed, with negative controls, wired into
+> `tests/selftest.py`): 15 checks the `intent_source` field AND that `scope.in_scope` / `scope.out_of_scope`
+> are both present and non-empty; 16 scans a surface for prose paragraphs.
+> Both gates check the **artifact**; neither can force Simba to have genuinely asked — that rung is still
+> a discipline, and the field can be stamped `asked` untruthfully.
 
 ## Portability guardrails (do not break)
 - No build, no dependencies — installs as a plain skills tree. Orchestration uses subagents, so the runtime surface is Claude Code / VS Code.

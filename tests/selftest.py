@@ -60,6 +60,20 @@ rc_pd = set(re.findall(r"RC-(PD-\d{3,})", open(RCASES).read()))
 missing_pd = [rc for rc in rc_pd if rc not in pd_ids and rc != "PD-scope"]
 check(not missing_pd, "every PD regression case maps to a real PD" + (f" (orphans: {missing_pd})" if missing_pd else ""))
 
+# --- PD-007: intent-source gate + prong-output shape gate must discriminate ---
+import intent_gate as ig
+_ig_cases = [
+    ("intent gate: an ASKED IntentCard is accepted", ig.check_intent_source({"intent_source": "asked", "goal": "g", "scope": {"in_scope": ["x"], "out_of_scope": ["y"]}})[0]),
+    ("intent gate: an INFERRED IntentCard is REJECTED (control)", not ig.check_intent_source({"intent_source": "inferred", "goal": "g", "scope": {"in_scope": ["x"], "out_of_scope": ["y"]}})[0]),
+    ("intent gate: a MISSING intent_source fails closed (control)", not ig.check_intent_source({"goal": "g"})[0]),
+    ("scope gate: a card with NO scope is REJECTED (control)", not ig.check_intent_source({"intent_source": "asked", "goal": "g"})[0]),
+    ("scope gate: an empty out_of_scope is REJECTED (control)", not ig.check_intent_source({"intent_source": "asked", "goal": "g", "scope": {"in_scope": ["x"], "out_of_scope": []}})[0]),
+    ("shape gate: bullets + table pass", ig.check_shape("| a | b |\n|---|---|\n- x\n  - y\n")[0]),
+    ("shape gate: a prose paragraph is REJECTED (control)", not ig.check_shape("One sentence here. Two sentences here. Three sentences here.\n")[0]),
+]
+for _name, _ok in _ig_cases:
+    check(_ok, _name)
+
 # --- PD-002: the TNR judge-validation gate must discriminate ---
 import tnr
 for ok, msg in tnr.validate_all():
@@ -73,6 +87,7 @@ for ok, msg in rubrics.validate_all():
 # --- no personal data in the committed log ---
 blob = open(JSONL).read()
 leaks = [p for p in ("/Users/", "devanshpathak") if p in blob]
+# house-rule 9: no personal data in a committed record. Re-scanned on every run.
 check(not leaks, "no personal paths in the SSOT" + (f" (found {leaks})" if leaks else ""))
 
 # --- summary ---
@@ -81,5 +96,55 @@ for r in records: kd[r["detector"]["kind"]] = kd.get(r["detector"]["kind"], 0) +
 print(f"\n  {len(records)} records | detector mix: " +
       ", ".join(f"{k}:{v}" for k, v in sorted(kd.items())))
 print(f"  {len(rc_ids)} regression cases wired")
+
+# --- prong exchange + doors + census presence (makes prove-durable ORPHANS durable) ---
+# prove-durable found validate_prongs, the session doors, and census were real gates that
+# NOTHING invoked, so they would rot. Running them here is the trigger that makes them durable:
+# delete any of these files and this suite goes red, which is the definition of durable.
+_here = _os0.path.dirname(_os0.path.abspath(__file__)) if False else os.path.dirname(os.path.abspath(__file__))
+def _run(label, cmd, cwd):
+    r = __import__("subprocess").run(cmd, cwd=cwd, capture_output=True, text=True)
+    check(r.returncode == 0, label + ("" if r.returncode == 0 else f" (exit {r.returncode})"))
+    return r
+
+_root = os.path.dirname(_here)
+_run("prong validator passes (C0-C3)", [sys.executable, "prongs/validate_prongs.py"], _root)
+_run("session doors hold (open/compose/close)", ["node", "tests/test-doors.mjs"], _root)
+# Blocking, unlike the census below. A surviving mutant means a checker could be deleted
+# without failing a test, which makes every green result downstream of it meaningless.
+# That is a broken build, not a backlog item.
+import subprocess as _sp0, os as _os0, sys as _sys0
+_m = _sp0.run([_sys0.executable, _os0.path.join(_os0.path.dirname(_os0.path.abspath(__file__)),
+                                                "..", "prongs", "mutate.py")],
+              capture_output=True, text=True)
+if _m.returncode == 0:
+    print(f"  mutation: {[l for l in _m.stdout.splitlines() if 'killed by their own' in l][0].strip()}")
+else:
+    print("  mutation: SURVIVING MUTANT(S) - a checker can be deleted without failing a test")
+    for _l in _m.stdout.splitlines():
+        if "SURVIVED" in _l or ": no control" in _l or ": not covered" in _l:
+            print(f"    {_l.strip()}")
+    fails.append("mutation test: surviving mutant")
+
+# --- coverage, not correctness ---
+# Everything above proves the gates work ON FIXTURES. It cannot prove they were ever applied
+# to real work, and those come apart: design-loop had 6 runs showing a green gate where the
+# craft checks had never run at all. So surface the census count here, next to the PASS, or
+# a green selftest reads as "Trident is working" when the exchange it governs is dead.
+# Non-blocking on purpose: gaps are a backlog, not a broken build. Use `census.py --strict`
+# in CI once the count is driven to zero.
+import subprocess as _sp, os as _os
+_c = _sp.run([sys.executable, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "census.py")],
+             capture_output=True, text=True)
+_last = [l for l in _c.stdout.splitlines() if l.startswith("RESULT:")]
+_tally = [l for l in _c.stdout.splitlines() if "blocking" in l]
+# BLOCKING on whether census EXECUTED, non-blocking on the gap COUNT. Deleting census.py makes
+# the subprocess fail to produce a RESULT line, which fails the suite (so census is durable),
+# while an open gap count stays a backlog, not a broken build (no gate fatigue).
+check(bool(_last), "census executed (its absence fails the suite; the gap COUNT stays non-blocking)")
+print(f"  census: {_last[0].replace('RESULT: ', '') if _last else 'DID NOT RUN'}"
+      f"{' | ' + _tally[0].strip() if _tally else ''}")
+print("          (fixtures passing is not coverage. python3 tests/census.py for the gap list)")
+
 print(("\nRESULT: PASS" if not fails else f"\nRESULT: FAIL ({len(fails)} checks)"))
 sys.exit(1 if fails else 0)

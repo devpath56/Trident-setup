@@ -10,6 +10,11 @@ content hash AND its calibration dimension still clears the TNR gate.
 THE SILENT-EDIT DETECTOR (deterministic):
   content_hash = sha256(criterion \\x00 version). Stored in the rubric. If someone edits `criterion`
   without bumping `version` / re-recording the hash, the recomputed hash mismatches -> FLAGGED.
+  Enforces house-rule 5 (no self-grading free-form: per-dimension BINARY pass/fail, never a
+  numeric or Likert score) and house-rule 14 (an unvalidated judge is not a gate: the TNR bar
+  is what turns rule 5 from a reminder into a measured gate). Named here so the census can
+  see the link from both ends -- a checker that does not name its rule is unfindable.
+
   A rubric is "gate-ready" only if: hash matches AND criterion is binary (names PASS and FAIL) AND its
   calibration dimension is TNR-validated by tnr.py. Anything else => not-gate-ready, fail-closed.
 

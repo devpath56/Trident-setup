@@ -1,0 +1,33 @@
+#!/bin/sh
+# Trident pre-commit gate.
+#
+# Three files in this repo already called selftest "the commit gate" (validate_decisions.py,
+# tnr.py, failures-log.md) while .git/hooks held nothing but samples. The claim was true one
+# hop deep: those checks ARE wired into selftest, and selftest was wired to nothing. This
+# file makes the existing claim true rather than adding a new mechanism.
+#
+# Install on a fresh clone (git does not version .git/hooks):
+#   cp .githooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+#
+# Bypass, when you genuinely mean to:  git commit --no-verify
+
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "── selftest (blocking) ─────────────────────────────"
+if ! python3 tests/selftest.py; then
+  echo ""
+  echo "COMMIT BLOCKED: selftest failed. Fix it, or --no-verify and say why in the message."
+  exit 1
+fi
+
+echo ""
+echo "── census (reporting only) ─────────────────────────"
+# Deliberately NOT blocking. 16 gaps are open today; a blocking census would fail every
+# commit and get bypassed within a day, which converts a gate into a habit of ignoring it.
+# Once the count reaches 0, swap this for: python3 tests/census.py --strict
+python3 tests/census.py | tail -12 || true
+
+echo ""
+echo "── committed ───────────────────────────────────────"

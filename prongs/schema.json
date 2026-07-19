@@ -1,0 +1,43 @@
+{
+  "$comment": "Prong artifacts. This file is the whole point of C0: the RCA found that every Trident mechanism with a file + schema + validator survived, and every one defined only as a prose shape in a skill file decayed to zero use. IntentCard and DriftFlag had a name and a description and nothing else.",
+  "kinds": {
+    "intent": {
+      "required": ["id", "kind", "ts", "runId", "intent_source", "scope", "goal"],
+      "notes": "Written by Simba at step 0. intent_source must be 'asked'; 'inferred' is not a valid gate input (house-rule 15)."
+    },
+    "assumptions": {
+      "required": ["id", "kind", "ts", "runId", "assumptions"],
+      "notes": "Written by the Do-er in Phase 0. Each assumption carries kill_power and uncertainty."
+    },
+    "ratverdict": {
+      "required": ["id", "kind", "ts", "runId", "riskiest_assumption", "cheapest_probe", "gate"],
+      "notes": "Written by the Auditor, consumed by the Do-er. Named in 8 files and homeless until now: the `probe` kind recorded the RESULT, so which assumption was ranked riskiest, by whom, was unrecorded. Shape from auditor/SKILL.md:50."
+    },
+    "probe": {
+      "required": ["id", "kind", "ts", "runId", "riskiest", "result"],
+      "notes": "result is PASS or FAIL. A FAIL with no matching override row blocks every later run (C3)."
+    },
+    "close": {
+      "required": ["id", "kind", "ts", "runId", "verdictId"],
+      "notes": "Written only by close-session.mjs, which refuses to emit one unless the exit conditions hold. Its presence is the proof a session ended through the door rather than by being abandoned."
+    },
+    "drift": {
+      "required": ["id", "kind", "ts", "runId", "determination", "drifted_from"],
+      "notes": "Simba proposes. Every drift row needs a matching verdict row or it is orphaned (C2)."
+    },
+    "verdict": {
+      "required": ["id", "kind", "ts", "runId", "intentCardId", "detectors"],
+      "notes": "Written by the Auditor. intentCardId proves which IntentCard it actually read (C1)."
+    },
+    "override": {
+      "required": ["id", "kind", "ts", "runId", "overrides", "reason"],
+      "notes": "An explicit, logged decision to proceed past a failed probe. Never implicit."
+    }
+  },
+  "enum": {
+    "kind": ["intent", "assumptions", "ratverdict", "probe", "drift", "verdict", "override", "close"],
+    "intent_source": ["asked", "inferred"],
+    "result": ["PASS", "FAIL"],
+    "determination": ["ConflictFlag", "DriftFlag", "no-drift"]
+  }
+}
