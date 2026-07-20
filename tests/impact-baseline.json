@@ -1,0 +1,11 @@
+{
+  "audit_rate": 1.0,
+  "enforcement_gaps": 0,
+  "exchange_gaps": 0,
+  "recurrences": 0,
+  "runs_audited": 4,
+  "runs_genuine": 4,
+  "self_heal": 0,
+  "transport_gaps": 2,
+  "unlinked": 0
+}
