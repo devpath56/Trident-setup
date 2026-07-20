@@ -112,7 +112,13 @@ for (const f of modified) {
 
   const existedAtBase = git('cat-file', '-e', `${BASE}:${f}`).status === 0;
   if (existedAtBase) {
-    git('checkout', BASE, '--', f);          // F back to baseline, other changes intact
+    // Revert the WORKING TREE ONLY. `git checkout BASE -- f` also STAGES the base blob in the index
+    // and never un-stages it — undo() below restores the file but not the index, so the index is
+    // left holding the base version. A caller's later `git checkout -- .` then restores that base
+    // content and silently drops the change (this corrupted two commits before it was found). Write
+    // the base blob straight to the file; the index is never touched. `buffer` preserves exact bytes.
+    const blob = spawnSync('git', ['-C', REPO, 'show', `${BASE}:${f}`], { encoding: 'buffer', maxBuffer: 1 << 26 });
+    fs.writeFileSync(abs, blob.stdout);
     process.stdout.write(`  revert ${f} ... `);
   } else {
     fs.rmSync(abs);                          // added since BASE: no baseline, so remove it
