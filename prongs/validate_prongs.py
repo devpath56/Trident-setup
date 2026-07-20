@@ -663,15 +663,25 @@ def check_no_silent_tool_error(spans, output_text=""):
 # reached a verdict having called no tool — zero evidence. This is the coarse deterministic floor
 # under PD-008's llm-judge residue: it cannot judge whether a specific claim is supported, only that
 # SOME tool-call evidence exists at all. Detection, not root-cause; house-rule 1 ranks it so.
-def check_claim_has_span(spans):
-    """PD-008. FAIL when the span set has ZERO executed tool-call spans (only the root run, or
-    none): a verdict/claim with no tool-call evidence in the turn is narrated, not verified."""
+# RESULT-asserting artifacts must show a tool-call span; reasoning/plan artifacts are EXEMPT.
+# A probe result or an Auditor detector-verdict claims "I ran something -> here is the result",
+# so it must carry evidence. An intent/assumptions/ratverdict/drift/override/close reasons over
+# injected context and legitimately has spans=root-only; gating those would false-positive every
+# Simba IntentCard and Auditor RATVerdict (the soundness bug this fix closes).
+CLAIM_RESULT_KINDS = {"probe", "verdict"}
+
+def check_claim_has_span(spans, kind="verdict"):
+    """PD-008 (SCOPED). FAIL only when a RESULT-asserting artifact (a probe result, an Auditor
+    detector-verdict) has ZERO executed tool-call spans: it ran nothing yet claims a result, so it
+    is narrated, not verified. Reasoning/plan kinds are EXEMPT (they claim no tool-derived result)."""
+    if kind not in CLAIM_RESULT_KINDS:
+        return []  # reasoning/plan artifact — no tool-derived result claimed
     tool_spans = [s for s in (spans or []) if s.get("role") != "root"]
     if not tool_spans:
         return [
-            "the span set has zero executed tool-call spans (only the root run, or none): a result "
-            "or verdict claim with no tool-call evidence in the same turn is narrated, not verified "
-            "(PD-008, reuses CF-004/CF-046). Re-derivation by reading source leaves no span"
+            f"a {kind} asserts a result but its span set has zero executed tool-call spans (only the "
+            "root run, or none): a result claim with no tool-call evidence is narrated, not verified "
+            "(PD-008, reuses CF-004/CF-046). The Auditor must RUN the detectors, not narrate them"
         ]
     return []
 
@@ -947,12 +957,14 @@ def controls():
 
     # --- PD-008: a verdict/claim with no executed tool-call span is narrated, not verified ---
     _ok = {"span": "Read#1", "role": "ok", "status": "OK"}
-    out.append(("PD-008 fires when the span set has only the root run (no tool-call evidence)",
-                bool(check_claim_has_span([_root]))))
-    out.append(("PD-008 fires on an empty span set (no tool call at all)",
-                bool(check_claim_has_span([]))))
-    out.append(("PD-008 passes when at least one executed tool-call span exists (positive control)",
-                not check_claim_has_span([_root, _ok])))
+    out.append(("PD-008 fires when a RESULT artifact (probe) has only the root run (no tool-call evidence)",
+                bool(check_claim_has_span([_root], "probe"))))
+    out.append(("PD-008 fires on an empty span set for a result artifact (no tool call at all)",
+                bool(check_claim_has_span([], "verdict"))))
+    out.append(("PD-008 passes when a result artifact has >=1 executed tool-call span (positive control)",
+                not check_claim_has_span([_root, _ok], "verdict")))
+    out.append(("PD-008 EXEMPTS a reasoning artifact (intent, root-only spans) — no false-positive on Simba/Auditor verdicts",
+                not check_claim_has_span([_root], "intent")))
     return out
 
 
