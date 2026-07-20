@@ -112,6 +112,9 @@ def _run(label, cmd, cwd):
 _root = os.path.dirname(_here)
 _run("prong validator passes (C0-C3)", [sys.executable, "prongs/validate_prongs.py"], _root)
 _run("session doors hold (open/compose/close)", ["node", "tests/test-doors.mjs"], _root)
+# spans.mjs derives the Auditor's Spans from the Do-er's EXECUTED transcript (narrated==executed,
+# CF-046). Exercising it here makes it durable: delete/gut spans.mjs and this suite goes red.
+_run("span extractor holds (executed transcript -> Spans)", ["node", "tests/test-spans.mjs"], _root)
 # Blocking, unlike the census below. A surviving mutant means a checker could be deleted
 # without failing a test, which makes every green result downstream of it meaningless.
 # That is a broken build, not a backlog item.
@@ -163,6 +166,17 @@ check(bool(_last), "census executed (its absence fails the suite; the gap COUNT 
 print(f"  census: {_last[0].replace('RESULT: ', '') if _last else 'DID NOT RUN'}"
       f"{' | ' + _tally[0].strip() if _tally else ''}")
 print("          (fixtures passing is not coverage. python3 tests/census.py for the gap list)")
+
+# --- outward-impact ratchet (Track A): audit_rate + census non-regression, forward-only ---
+# census asks "were the gates applied?"; impact asks "is the audit actually happening and holding
+# across REAL runs?" A RATCHET, not a threshold: --strict exits 1 if any headline number regresses
+# vs the committed impact-baseline.json. Blocking here does double duty — deleting impact.py makes
+# this exit nonzero (durability), and a genuine regression reddens the suite until it is fixed or
+# the baseline is raised explicitly (python3 tests/impact.py --set-baseline, never silent). The
+# north-star escapes/prevention_integrity are Track B, deferred behind a per-detector disposition
+# field (the Auditor rejected them as not deterministically computable from the current schema).
+_run("outward-impact ratchet holds (audit_rate + census non-regression)",
+     [sys.executable, "tests/impact.py", "--strict"], _root)
 
 print(("\nRESULT: PASS" if not fails else f"\nRESULT: FAIL ({len(fails)} checks)"))
 sys.exit(1 if fails else 0)

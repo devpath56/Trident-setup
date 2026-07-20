@@ -94,4 +94,44 @@ PASS:     validate_decisions.py flags it; only PDs touching .claude/skills|failu
 FAIL:     an object-level decision (e.g. applied_in a watched app's source) is accepted into decisions.jsonl
 detector: deterministic (meta_scope_violations path-prefix + on-disk-existence check; control: pd_out_of_scope.json)
 
-> TODO after approval: one case per remaining CF as the full log is migrated.
+## Seed detector catalog (PD-008..PD-012 — a-priori modes from TraceRoot, promote-on-first-observation)
+### RC-PD-008 — hallucination / unverifiable claim seeded, not dumped into the CF SSOT
+trigger:  an a-priori hallucination detector is added
+PASS:     it lands in decisions.jsonl (PD-008) as pre-emptive with a promotion_trigger, NOT in failures.jsonl; any llm-judge form fails closed until it clears tnr.py
+FAIL:     a hypothetical hallucination guard written straight into failures.jsonl, or an llm-judge gating work with no TNR validation
+detector: structural (PD present + pre-emptive; guardrail: tnr.py before gating)
+
+### RC-PD-009 — silent tool-failure seeded; error signal is executed, not narrated
+trigger:  a tool/subprocess error occurs mid-run
+PASS:     PD-009 exists; prongs/spans.mjs surfaces the failed call as a role:"error" span (executed), so the promotion detector is structural
+FAIL:     the tool error is only visible in the Do-er's self-narration, or no anticipation entry exists
+detector: structural (spans.mjs role:"error"; exercised by tests/test-spans.mjs)
+
+### RC-PD-010 — logic-error / self-contradiction seeded
+trigger:  an a-priori self-contradiction detector is added
+PASS:     PD-010 exists as pre-emptive with a promotion_trigger; promotes to a hybrid detector on first real occurrence
+FAIL:     a hypothetical logic-error guard written into failures.jsonl before any observation
+detector: reminder → hybrid on promotion
+
+### RC-PD-011 — safety-violation seeded on the house-rule-6 substrate
+trigger:  an irreversible/prohibited action with no approval
+PASS:     PD-011 exists; the structural core is already enforced by validate_prongs check_rule6_reversibility (irreversible action needs approved_by)
+FAIL:     a prohibited action shipped with no approval and no anticipation entry
+detector: structural (reuses HR-6 reversibility gate)
+
+### RC-PD-012 — intent-drift seeded WITHOUT duplicating Simba
+trigger:  an a-priori intent-drift detector is considered
+PASS:     PD-012 seeds anticipation only; the drift RULING stays with Simba's tier-1 detector + DriftFlag.determination (no second gate)
+FAIL:     a parallel intent-drift gate added alongside Simba's, duplicating the ruling
+detector: reminder (cross-checks Simba; promotion hardens Simba's detector, not a duplicate)
+
+### RC-PD-013 — outward-impact ratchet, not a threshold or a vanity score
+trigger:  an outward-impact metric is promoted to a gate
+PASS:     PD-013 tracks only deterministically-computable metrics (audit_rate + census gaps) as a forward-only RATCHET (tests/impact.py --strict blocks a regression vs impact-baseline.json); escapes/prevention_integrity are DEFERRED to Track B behind a per-detector disposition field
+FAIL:     a north-star (escapes/prevention_integrity) shipped while uncomputable, OR an absolute threshold that produces gate-fatigue, OR a baseline raised silently
+detector: deterministic (tests/impact.py --strict + 12 controls + tests/test-impact.mjs, wired into tests/selftest.py)
+
+> Prong-level mechanisms from this change are covered by EXECUTABLE regression instead of prose cases:
+> span extraction (narrated==executed) → tests/test-spans.mjs; RCA-on-fail evidence gate + compose-rca
+> refusal → tests/test-doors.mjs; span_ref + rca schema/validator → prongs/validate_prongs.py controls
+> (all wired into tests/selftest.py). > TODO after approval: one case per remaining CF as the log migrates.
