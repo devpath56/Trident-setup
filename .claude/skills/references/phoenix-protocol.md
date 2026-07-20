@@ -22,8 +22,24 @@ A CF `trace` entry — `{span, note, role}` — is a reduced OpenInference span.
 marks the root-cause and error spans, matching your existing `⊘ root / ⚠ error` convention. This is
 deliberately a strict subset of the OpenInference schema so a future exporter is a field-rename, not a rewrite.
 
-> TODO after approval: the exact field map from a CF `trace` entry to an OpenInference span, and the
-> minimal exporter contract for the optional Python harness.
+## The extractor is real: `prongs/spans.mjs` (delivers the field map below)
+The Do-er's `Spans` are **not** self-narrated — they are extracted from its executed subagent transcript by
+`prongs/spans.mjs` (stdlib Node, no SDK). This is the dep-free form of TraceRoot-style auto-instrumentation:
+narrated == executed by construction, so the CF-046 gap cannot open (root-cause, not detection — house-rule 1).
+
+Field map — one executed tool call → one reduced OpenInference span; the Do-er run is the root span:
+| OpenInference span field | source in the transcript |
+|---|---|
+| `span` (name) | `tool_use.name` + a 1-based `#index` (repeats stay distinct) |
+| `input` | `tool_use.input` (clipped — a span points at the work, it does not copy it) |
+| `output` | the matching `tool_result.content` by `tool_use_id` (clipped) |
+| `status` | `tool_result.is_error ? "ERROR" : "OK"` |
+| `error` | the `tool_result` text when `is_error` (else omitted) |
+| `role` | `root` (the Do-er run) · `error` (is_error) · `ok` — the `⊘ root / ⚠ error` convention |
+| `ts` | the assistant message `timestamp` |
+
+Exercised by `tests/test-spans.mjs` (wired into `tests/selftest.py`), including the discrimination control
+that a non-error result yields no error span. A real Phoenix exporter is now a field-rename over this shape.
 
 Sources (current Phoenix feature set, retrieved 2026-07):
 - Arize Phoenix docs — <https://arize.com/docs/phoenix>
