@@ -609,6 +609,73 @@ def check_rca(rows):
     return problems
 
 
+# ── PD-009: a silent tool-failure — an error span nobody acknowledged or retried ──
+# spans.mjs derives one span per EXECUTED tool call and tags a failed call role="error". The
+# a-priori mode (detectors-seed.md PD-009): the Do-er hit a real tool error and neither surfaced
+# it in the Output nor retried the tool — the failure was swallowed and the turn shipped as if
+# clean. Restated as a property of the extracted Spans it is deterministic: an error span is safe
+# only if it was ACKNOWLEDGED in the Output (the failure/tool is named) OR RETRIED (a LATER role=="ok"
+# span for the SAME tool). Anything else is a silent tool-error. Coarse-and-forward like the other
+# gates: it gates the trace, not whether the acknowledgment was adequate — detection, not root-cause.
+_ACK_TOKENS = ("error", "fail", "retr", "could not", "couldn't", "couldnt", "unable",
+               "exception", "non-zero", "nonzero", "did not succeed", "errored")
+
+
+def _span_tool(span):
+    """The tool name of a span, from its '<tool>#<idx>' name field (idx makes repeats distinct)."""
+    return str(span.get("span", "")).split("#", 1)[0].strip()
+
+
+def check_no_silent_tool_error(spans, output_text=""):
+    """PD-009. FAIL for any role=='error' span that is neither acknowledged in output_text (the
+    failure/tool is named) nor retried (a later role=='ok' span for the same tool)."""
+    spans = spans or []
+    text = (output_text or "").lower()
+    problems = []
+    for i, s in enumerate(spans):
+        if s.get("role") != "error":
+            continue
+        tool = _span_tool(s)
+        retried = any(later.get("role") == "ok" and _span_tool(later) == tool
+                      for later in spans[i + 1:])
+        if retried:
+            continue
+        err = str(s.get("error", "")).strip()
+        acknowledged = False
+        if tool and tool.lower() in text and any(tok in text for tok in _ACK_TOKENS):
+            acknowledged = True
+        if err and len(err) >= 8 and err[:40].lower() in text:
+            acknowledged = True
+        if not acknowledged:
+            problems.append(
+                f"span {s.get('span')!r} is role='error' ({err[:60] or 'no error text'}) but the "
+                f"Output neither acknowledges the failure nor retries the tool — a silent tool-error "
+                f"(PD-009). Surface it or retry it; a swallowed tool failure ships as if clean"
+            )
+    return problems
+
+
+# ── PD-008: a claim/verdict with no tool-call evidence in the same turn ───────────
+# The a-priori hallucination proxy (detectors-seed.md PD-008, reusing CF-004/CF-046): a factual or
+# result claim with no supporting tool-call in the same turn is narrated, not verified. spans.mjs
+# makes the deterministic floor of that checkable: role=="root" is the Do-er run itself, every other
+# span is an EXECUTED tool call. A span set carrying ONLY the root (or nothing) is a turn that
+# reached a verdict having called no tool — zero evidence. This is the coarse deterministic floor
+# under PD-008's llm-judge residue: it cannot judge whether a specific claim is supported, only that
+# SOME tool-call evidence exists at all. Detection, not root-cause; house-rule 1 ranks it so.
+def check_claim_has_span(spans):
+    """PD-008. FAIL when the span set has ZERO executed tool-call spans (only the root run, or
+    none): a verdict/claim with no tool-call evidence in the turn is narrated, not verified."""
+    tool_spans = [s for s in (spans or []) if s.get("role") != "root"]
+    if not tool_spans:
+        return [
+            "the span set has zero executed tool-call spans (only the root run, or none): a result "
+            "or verdict claim with no tool-call evidence in the same turn is narrated, not verified "
+            "(PD-008, reuses CF-004/CF-046). Re-derivation by reading source leaves no span"
+        ]
+    return []
+
+
 # ── negative controls ─────────────────────────────────────────────────────────
 def controls():
     out = []
@@ -862,6 +929,30 @@ def controls():
                 bool(check_rca([failing_v, rc(root_cause="TBD")]))))
     out.append(("RCA rejects a missing failing_span_ref (the localizing field)",
                 bool(check_rca([failing_v, rc(failing_span_ref="  ")]))))
+
+    # --- PD-009: a silent (unacknowledged, unretried) tool-error span must be caught ---
+    # Fixture spans in the spans.mjs shape: role root|error|ok, name '<tool>#<idx>'.
+    _root = {"span": "root#0", "role": "root", "status": "OK"}
+    _err = {"span": "Bash#2", "role": "error", "status": "ERROR",
+            "error": "npm ERR! build failed with exit code 1"}
+    out.append(("PD-009 fires on an unacknowledged, unretried error span (silent tool-failure)",
+                bool(check_no_silent_tool_error([_root, _err], output_text="all good, shipping it"))))
+    out.append(("PD-009 passes when the error is acknowledged in the Output (positive control)",
+                not check_no_silent_tool_error(
+                    [_root, _err],
+                    output_text="the Bash step errored with a non-zero exit; reporting it, not proceeding")))
+    out.append(("PD-009 passes when the tool was retried to a later ok span (positive control)",
+                not check_no_silent_tool_error(
+                    [_root, _err, {"span": "Bash#3", "role": "ok", "status": "OK"}])))
+
+    # --- PD-008: a verdict/claim with no executed tool-call span is narrated, not verified ---
+    _ok = {"span": "Read#1", "role": "ok", "status": "OK"}
+    out.append(("PD-008 fires when the span set has only the root run (no tool-call evidence)",
+                bool(check_claim_has_span([_root]))))
+    out.append(("PD-008 fires on an empty span set (no tool call at all)",
+                bool(check_claim_has_span([]))))
+    out.append(("PD-008 passes when at least one executed tool-call span exists (positive control)",
+                not check_claim_has_span([_root, _ok])))
     return out
 
 
