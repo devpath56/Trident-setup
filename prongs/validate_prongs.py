@@ -279,6 +279,42 @@ def check_probe_gate(rows, runs):
     return problems
 
 
+# ── ESCAPE: a close must not carry an un-overridden failing detector ───────────
+# check_probe_gate's twin, lifted from probes to detectors. A close cites the authoritative verdict
+# (close.verdictId). If THAT verdict still has a result:"fail" detector that was neither overridden
+# (an explicit logged decision to proceed past it — the SAME override row, now pointing at a verdict
+# + detector_id instead of a probe) nor re-audited green (in which case the latest verdict would show
+# it passing), then the session shipped a false-PASS: an ESCAPE. This makes "escapes" computable, and
+# because close-session refuses to emit such a close going forward, it makes them impossible at the
+# door. Forward-only: closes before DISPOSITION_FROM predate the gate (c0-audit's approved fails were
+# ruled non-blocking in prose before the override row existed to record it).
+DISPOSITION_FROM = "2026-07-21T00:00:00Z"
+
+
+def check_detector_gate(rows):
+    verdict_by_id = {r["id"]: r for r in rows if r.get("kind") == "verdict" and "id" in r}
+    overrides = [r for r in rows if r.get("kind") == "override"]
+    problems = []
+    for c in rows:
+        if c.get("kind") != "close" or c.get("ts", "") < DISPOSITION_FROM:
+            continue
+        v = verdict_by_id.get(c.get("verdictId"))
+        if not v:
+            continue
+        for d in (v.get("detectors") or []):
+            if str(d.get("result", "")).lower() != "fail":
+                continue
+            did = d.get("detector_id")
+            covered = any(o.get("overrides") == v["id"] and o.get("detector_id") == did for o in overrides)
+            if not covered:
+                problems.append(
+                    f"close {c['id']} on verdict {v['id']}: detector {did!r} FAILED and the session "
+                    f"closed with no override row — a false-PASS escape. Log an override naming who "
+                    f"accepted it and why, or re-audit it green"
+                )
+    return problems
+
+
 # ── fan-out independence: parallel work units must be PROVEN independent ───────
 # The orchestrator can launch parallel Do-ers, but nothing checked that their independence
 # was DISCHARGED (proven) rather than ASSERTED (assumed) before fan-out. This session's gap:
@@ -677,6 +713,22 @@ def controls():
                             "runId": "r", "overrides": "p1", "reason": "accepted the risk"}]
     out.append(("C3 allows it once an override is logged", not check_probe_gate(ok_override, [{"ts": "2026-01-02T00:00:00Z"}])))
 
+    # --- ESCAPE: a close must not carry an un-overridden failing detector (detector-gate twin) ---
+    esc_v = {"id": "ve", "kind": "verdict", "ts": "2026-07-21T00:00:00Z", "runId": "r", "intentCardId": "i",
+             "detectors": [{"detector_id": "CF-046", "result": "fail", "signal_seen": "x"}]}
+    esc_close = {"id": "ce", "kind": "close", "ts": "2026-07-21T01:00:00Z", "runId": "r", "verdictId": "ve"}
+    out.append(("ESCAPE a post-cutoff close with an un-overridden failing detector fires",
+                bool(check_detector_gate([esc_v, esc_close]))))
+    esc_ovr = {"id": "oe", "kind": "override", "ts": "2026-07-21T00:30:00Z", "runId": "r",
+               "overrides": "ve", "detector_id": "CF-046", "reason": "accepted, non-blocking"}
+    out.append(("ESCAPE an override on the verdict+detector clears it",
+                not check_detector_gate([esc_v, esc_close, esc_ovr])))
+    pre_v = {"id": "vp", "kind": "verdict", "ts": "2026-07-19T00:00:00Z", "runId": "r", "intentCardId": "i",
+             "detectors": [{"detector_id": "CF-046", "result": "fail", "signal_seen": "x"}]}
+    pre_close = {"id": "cp", "kind": "close", "ts": "2026-07-19T00:00:00Z", "runId": "r", "verdictId": "vp"}
+    out.append(("ESCAPE does NOT retro-fail a close that predates the gate (forward-only)",
+                not check_detector_gate([pre_v, pre_close])))
+
     # --- fan-out independence: prove parallel work units are independent before launch ---
     fo = lambda **kw: {"id": "fo1", "kind": "fanout", "ts": "2026-07-20T00:00:00Z", "runId": "r",
                        "work_units": [{"name": "A", "paths": ["alpha/"]},
@@ -828,6 +880,7 @@ def main():
         ("C1b verdict cites real CF detectors from the failures-log SSOT", check_verdict_cites_detectors(rows)),
         ("C2 no orphan drift flags", check_no_orphan_drift(rows)),
         ("C3 failed probe blocks later runs", check_probe_gate(rows, runs)),
+        ("ESCAPE closed verdict has no un-overridden failing detector", check_detector_gate(rows)),
         ("FAN-OUT independence discharged + paths disjoint before parallel launch", check_fanout_independence(rows)),
         ("GATE-ASM deferred high-kill assumption blocks the next phase (CF-068)", check_deferred_assumption_gate(rows)),
         ("HR-7 every detector quotes a signal", check_rule7_signal(rows)),

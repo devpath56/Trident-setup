@@ -60,6 +60,16 @@ const unaudited = impact(['--strict']);
 check('an unaudited new run drops audit_rate → REGRESSES (exit 1)', unaudited.status === 1);
 check('  and names audit_rate as the regression', /audit_rate/.test(unaudited.stdout));
 
+// ── REGRESS 3 (Track B): a post-cutoff close on an un-overridden failing detector → escapes rises ──
+fs.writeFileSync(ledger, genuine('1') + '\n' + genuine('2') + '\n' +
+  [row({ id: 'i-9', kind: 'intent', ts: '2026-07-21T00:00:00Z', runId: '9', intent_source: 'asked' }),
+   row({ id: 'v-9', kind: 'verdict', ts: '2026-07-21T00:01:00Z', runId: '9', intentCardId: 'i-9',
+         detectors: [{ detector_id: 'CF-046', result: 'fail', signal_seen: 'x' }] }),
+   row({ id: 'c-9', kind: 'close', ts: '2026-07-21T00:02:00Z', runId: '9', verdictId: 'v-9' })].join('\n') + '\n');
+const escaped = impact(['--strict']);
+check('a post-cutoff escape raises escapes → REGRESSES (exit 1)', escaped.status === 1);
+check('  and names escapes as the regression', /escapes: 0 -> 1/.test(escaped.stdout));
+
 // ── non-strict is a scoreboard: same regression does NOT fail without --strict ─────
 check('same regression is non-blocking WITHOUT --strict (exit 0)', impact([]).status === 0);
 

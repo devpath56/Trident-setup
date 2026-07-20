@@ -93,12 +93,30 @@ if (of('probe').length && !of('ratverdict').length) {
   ]);
 }
 
+// 6 ── every failing detector in the closing verdict is overridden (or was re-audited green).
+// check 4's twin, lifted from probes to detectors: closing on a live failing detector is a
+// false-PASS escape. The SAME override row that clears a failed probe clears a failed detector,
+// pointing at the verdict + detector_id instead. A later passing re-audit makes onCard.at(-1)'s
+// detector pass, so it never appears here — only a still-failing detector at the door blocks.
+const closingV = onCard.at(-1);
+const escaped = closingV
+  ? (closingV.detectors || []).filter((d) => String(d.result).toLowerCase() === 'fail' &&
+      !of('override').some((o) => o.overrides === closingV.id && o.detector_id === d.detector_id))
+  : [];
+if (escaped.length) {
+  blocks.push([
+    `verdict ${closingV.id} still has failing detector(s) with no override: ${escaped.map((d) => d.detector_id).join(', ')}`,
+    'a close on a live failing detector is a false-PASS escape. Log an override naming who accepted it and why, or re-audit it green.',
+  ]);
+}
+
 console.log(`== close ${runId} ==\n`);
 const checks = [
   ['IntentCard exists', !!intent, intent?.id],
   ['Verdict cites it', onCard.length > 0, onCard[0]?.id],
   ['no unresolved DriftFlags', openDrift.length === 0, `${of('drift').length} raised`],
   ['no unhandled probe failure', unhandled.length === 0, `${failedProbes.length} failed`],
+  ['no un-overridden failing detector', escaped.length === 0, `${escaped.length} escaping`],
   ['RATVerdict recorded if probed', !(of('probe').length && !of('ratverdict').length), `${of('ratverdict').length} rat`],
 ];
 for (const [label, ok, detail] of checks) {

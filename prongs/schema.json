@@ -31,7 +31,7 @@
     },
     "override": {
       "required": ["id", "kind", "ts", "runId", "overrides", "reason"],
-      "notes": "An explicit, logged decision to proceed past a failed probe. Never implicit."
+      "notes": "An explicit, logged decision to proceed past a failure. Never implicit. `overrides` names WHAT is being accepted: a probe id (Phase-0 gate, C3) OR a verdict id, in which case the OPTIONAL `detector_id` names the specific failing detector within that verdict being accepted (the detector-gate / ESCAPE check). A close that carries a failing detector with no such override is a false-PASS escape."
     },
     "fanout": {
       "required": ["id", "kind", "ts", "runId", "work_units", "independence"],

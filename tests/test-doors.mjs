@@ -91,6 +91,23 @@ check('rat REFUSES re-opening the same phase (riskiest assumption cannot be swap
   run('rat.mjs', ['--run', 'rat-r', '--phase', 'build', '--push', 'proceed',
                   '--riskiest', 'a different assumption entirely here', '--probe', 'a different probe entirely here']).status === 2);
 
+// ── close-session ESCAPE gate: a failing detector needs an override, or the door refuses ──
+// The same override that clears a failed probe now clears a failed detector (verdict + detector_id).
+// Gutting close-session's detector check makes the REFUSES assertion below fail — so it is durable.
+check('open ACCEPTS the escape-gate test session',
+  run('open-session.mjs', ['--run', 'esc-r', '--goal', 'exercise the escape gate at the door',
+                           '--in', 'the door', '--out', 'the rest']).status === 0);
+const escIntentId = (fs.readFileSync(ledger, 'utf8').split('\n').filter(Boolean)
+  .map((l) => JSON.parse(l)).find((x) => x.kind === 'intent' && x.runId === 'esc-r') || {}).id;
+append({ id: 'v-esc', kind: 'verdict', ts: '2026-07-21T00:00:00Z', runId: 'esc-r', intentCardId: escIntentId,
+         detectors: [{ detector_id: 'CF-046', result: 'fail', signal_seen: 'observed a live failure' }] });
+check('close REFUSES a verdict with an un-overridden failing detector (false-PASS escape)',
+  run('close-session.mjs', ['esc-r']).status === 1);
+append({ id: 'o-esc', kind: 'override', ts: '2026-07-21T00:30:00Z', runId: 'esc-r',
+         overrides: 'v-esc', detector_id: 'CF-046', reason: 'accepted as non-blocking, tracked' });
+check('close SUCCEEDS once the failing detector is overridden',
+  run('close-session.mjs', ['esc-r']).status === 0);
+
 fs.rmSync(path.dirname(ledger), { recursive: true, force: true });
 console.log(`\nRESULT: ${fails ? `${fails} FAIL` : 'PASS'}`);
 process.exit(fails ? 1 : 0);

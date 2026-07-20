@@ -1,7 +1,9 @@
 {
   "audit_rate": 1.0,
   "enforcement_gaps": 0,
+  "escapes": 0,
   "exchange_gaps": 0,
+  "prevention_integrity": null,
   "recurrences": 0,
   "runs_audited": 4,
   "runs_genuine": 4,

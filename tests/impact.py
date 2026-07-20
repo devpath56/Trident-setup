@@ -14,12 +14,15 @@ BLOCKS if any headline number regresses vs a committed baseline (impact-baseline
 the baseline is an explicit, logged act (--set-baseline), never silent. Forward-only, applied to
 every tracked number: outward metrics may not fall, census gaps may not rise.
 
-SCOPE (Track A — computable TODAY, deterministically, from the current schema)
-The Auditor rejected the original north-star `prevention_integrity` because its input `escapes`
-rests on fields the ledger does not record (no per-detector resolution status; override targets a
-probe, not a detector; no supersede link) and would misclassify the one real accepted-fail on file
-(c0-audit). So `escapes`, `localized`, and `prevention_integrity` are DEFERRED to Track B, behind a
-per-detector `disposition` schema field. This file tracks only what is computable without judgment.
+SCOPE
+Track A (audit_rate + census non-regression) is the always-on lead. Track B (escapes,
+prevention_integrity) is now computable too: rather than a new per-detector `disposition` field, the
+existing `override` row was generalized to accept a verdict + `detector_id` (the same primitive that
+clears a failed probe now clears a failed detector). So an `escape` = a genuine close whose cited
+verdict still carries an un-overridden failing detector — deterministic, and forward-only from
+DISPOSITION_FROM so c0-audit's prose-approved fails are exempt rather than misclassified.
+prevention_integrity stays None (not a vacuous 1.0) until a genuine run closes after the cutoff;
+per PD-013 it becomes the lead once it populates.
 
   python3 tests/impact.py                 # scoreboard + RESULT (non-blocking on values)
   python3 tests/impact.py --strict        # exit 1 if any headline number regressed (CI / pre-commit)
@@ -60,6 +63,10 @@ BASELINE = Path(_flag("--baseline", str(HERE / "impact-baseline.json")))
 CENSUS_PY = HERE / "census.py"
 
 CF_ID = re.compile(r"CF-\d{3,}")
+# Track B cutoff: escapes/localized/prevention_integrity are measured only over closes on/after this
+# (mirrors validate_prongs.DISPOSITION_FROM). Pre-cutoff closes predate the override-disposition
+# door, so c0-audit's prose-approved fails are exempt rather than counted as escapes (forward-only).
+DISPOSITION_FROM = "2026-07-21T00:00:00Z"
 
 
 # ── metrics (each deterministic, each computable from the current schema) ──────────────────
@@ -105,6 +112,56 @@ def recurrences(rows, genuine):
     return sorted(cf for cf, runset in seen.items() if len(runset) >= 2)
 
 
+# ── Track B: escape / localization / prevention_integrity (needs the override-disposition field) ──
+def _post_cutoff_closes(rows, genuine):
+    g = set(genuine)
+    return [c for c in rows if c.get("kind") == "close" and c.get("runId") in g
+            and c.get("ts", "") >= DISPOSITION_FROM]
+
+
+def _verdict(rows, vid):
+    return next((v for v in rows if v.get("kind") == "verdict" and v.get("id") == vid), None)
+
+
+def _uncovered_fails(rows, verdict):
+    """Failing detectors in `verdict` that no override row accepts — the escape set for that verdict."""
+    ovr = [o for o in rows if o.get("kind") == "override"]
+    return [d for d in (verdict.get("detectors") or [])
+            if str(d.get("result", "")).lower() == "fail"
+            and not any(o.get("overrides") == verdict.get("id") and o.get("detector_id") == d.get("detector_id")
+                        for o in ovr)]
+
+
+def escapes(rows, genuine):
+    """Post-cutoff genuine closes whose cited verdict still carries an un-overridden failing detector —
+    a false-PASS that shipped. 0 by construction going forward (close-session refuses such a close)."""
+    n = 0
+    for c in _post_cutoff_closes(rows, genuine):
+        v = _verdict(rows, c.get("verdictId"))
+        if v and _uncovered_fails(rows, v):
+            n += 1
+    return n
+
+
+def prevention_integrity(rows, genuine):
+    """Of post-cutoff genuine AUDITED closes, the fraction with NO escape AND every failing detector
+    localized (a span_ref, or an rca pinning it). None until there is >=1 post-cutoff audited close —
+    a vacuous 1.0 over zero runs would be the exact CF-065 shape this metric exists to avoid."""
+    rcas = [r for r in rows if r.get("kind") == "rca"]
+    audited = [(c, _verdict(rows, c.get("verdictId"))) for c in _post_cutoff_closes(rows, genuine)]
+    audited = [(c, v) for c, v in audited if v]
+    if not audited:
+        return None
+    good = 0
+    for c, v in audited:
+        fails = [d for d in (v.get("detectors") or []) if str(d.get("result", "")).lower() == "fail"]
+        localized = all(d.get("span_ref") or any(rc.get("verdictId") == v.get("id")
+                        and rc.get("failing_detector") == d.get("detector_id") for rc in rcas) for d in fails)
+        if not _uncovered_fails(rows, v) and localized:
+            good += 1
+    return round(good / len(audited), 4)
+
+
 def census_gap_feed(ledger):
     """Run census.py as a subprocess against the SAME ledger and parse its tally line — the
     established census-as-subprocess pattern, no invasive refactor. Returns a dict or None."""
@@ -134,6 +191,8 @@ def snapshot(rows=None, ledger=None):
         "audit_rate": round(len(audited) / len(g), 4) if g else 0.0,
         "self_heal": len(self_heal(rows, g)),
         "recurrences": len(recurrences(rows, g)),
+        "escapes": escapes(rows, g),
+        "prevention_integrity": prevention_integrity(rows, g),
     }
     feed = census_gap_feed(ledger)
     snap.update(feed if feed else {"transport_gaps": None, "exchange_gaps": None,
@@ -145,10 +204,12 @@ def snapshot(rows=None, ledger=None):
 # direction: '+' may not fall (more is better), '-' may not rise (fewer is better).
 DIRECTION = {
     "runs_genuine": "+", "runs_audited": "+", "audit_rate": "+", "self_heal": "+",
-    "recurrences": "-", "transport_gaps": "-", "exchange_gaps": "-",
-    "enforcement_gaps": "-", "unlinked": "-",
+    "prevention_integrity": "+", "recurrences": "-", "escapes": "-",
+    "transport_gaps": "-", "exchange_gaps": "-", "enforcement_gaps": "-", "unlinked": "-",
 }
-LEAD = "audit_rate"  # the number the scoreboard sorts by (NOT prevention_integrity — see header)
+# audit_rate is the operative lead while prevention_integrity has no post-cutoff data (it is None until
+# a genuine run closes after DISPOSITION_FROM). Per PD-013 it becomes the lead once it populates.
+LEAD = "audit_rate"
 EPS = 1e-9
 
 
@@ -204,6 +265,22 @@ def controls():
                 intent("b"), verdict("b", [{"detector_id": "gate-runs-clean", "result": "fail"}]), close("b")]
     out.append(("RECURRENCE a free-text detector id is out of scope", recurrences(freetext, genuine_runs(freetext)) == []))
 
+    # ESCAPE / PREVENTION: a post-cutoff close on an un-overridden failing detector is an escape.
+    ev = lambda rid, ts, res: {"id": f"v-{rid}", "kind": "verdict", "ts": ts, "runId": rid,
+                               "intentCardId": f"i-{rid}", "detectors": [{"detector_id": "CF-046", "result": res}]}
+    cl = lambda rid, ts: {"id": f"c-{rid}", "kind": "close", "ts": ts, "runId": rid, "verdictId": f"v-{rid}"}
+    esc = [intent("e"), ev("e", "2026-07-21T00:00:00Z", "fail"), cl("e", "2026-07-21T01:00:00Z")]
+    out.append(("ESCAPE a post-cutoff close with an un-overridden fail counts", escapes(esc, genuine_runs(esc)) == 1))
+    esc_ok = esc + [{"id": "o-e", "kind": "override", "ts": "2026-07-21T00:30:00Z", "runId": "e",
+                     "overrides": "v-e", "detector_id": "CF-046", "reason": "accepted"}]
+    out.append(("ESCAPE an override on the verdict+detector clears it", escapes(esc_ok, genuine_runs(esc_ok)) == 0))
+    pre = [intent("p"), ev("p", "2026-07-19T00:00:00Z", "fail"), cl("p", "2026-07-19T01:00:00Z")]
+    out.append(("ESCAPE a pre-cutoff close is exempt (forward-only)", escapes(pre, genuine_runs(pre)) == 0))
+    clean = [intent("q"), ev("q", "2026-07-21T00:00:00Z", "pass"), cl("q", "2026-07-21T01:00:00Z")]
+    out.append(("PREVENTION a clean post-cutoff audited close scores 1.0", prevention_integrity(clean, genuine_runs(clean)) == 1.0))
+    out.append(("PREVENTION an escaping close scores 0.0", prevention_integrity(esc, genuine_runs(esc)) == 0.0))
+    out.append(("PREVENTION is None with no post-cutoff close (not a vacuous 1.0)", prevention_integrity(pre, genuine_runs(pre)) is None))
+
     # RATCHET: a below-baseline snapshot regresses; at/above does not.
     base = {"runs_genuine": 4, "audit_rate": 1.0, "recurrences": 0, "transport_gaps": 2}
     below = {"runs_genuine": 3, "audit_rate": 1.0, "recurrences": 0, "transport_gaps": 2}
@@ -230,8 +307,9 @@ def print_panel(snap, base):
         print(f"  {k:<18} {_fmt(snap.get(k)):>8}  {_fmt(b):>8}  {dirn:>3}  {flag}")
     if any(snap.get(k) is None for k in ("transport_gaps", "exchange_gaps", "enforcement_gaps", "unlinked")):
         print("  note: census gap feed unavailable this run ('?') — those numbers are not ratcheted.")
-    print("  note: escapes / localized / prevention_integrity are Track B (need a per-detector "
-          "disposition field); not measured here.")
+    if snap.get("prevention_integrity") is None:
+        print("  note: prevention_integrity is '?' until a genuine run closes after the disposition "
+              "cutoff — a vacuous 1.0 over zero runs would be the exact shape it exists to avoid.")
 
 
 def main():

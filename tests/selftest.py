@@ -172,9 +172,10 @@ print("          (fixtures passing is not coverage. python3 tests/census.py for 
 # across REAL runs?" A RATCHET, not a threshold: --strict exits 1 if any headline number regresses
 # vs the committed impact-baseline.json. Blocking here does double duty — deleting impact.py makes
 # this exit nonzero (durability), and a genuine regression reddens the suite until it is fixed or
-# the baseline is raised explicitly (python3 tests/impact.py --set-baseline, never silent). The
-# north-star escapes/prevention_integrity are Track B, deferred behind a per-detector disposition
-# field (the Auditor rejected them as not deterministically computable from the current schema).
+# the baseline is raised explicitly (python3 tests/impact.py --set-baseline, never silent). Track B
+# (escapes, prevention_integrity) is now live too: the override row was generalized to accept a
+# verdict + detector_id, so an escape = a genuine close carrying an un-overridden failing detector
+# (enforced at the door by close-session and validated by validate_prongs.check_detector_gate).
 _run("outward-impact ratchet holds (audit_rate + census non-regression)",
      [sys.executable, "tests/impact.py", "--strict"], _root)
 
