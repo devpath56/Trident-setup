@@ -109,11 +109,17 @@ suite flips (the fix-and-guard-revert-together leak). Forward-only from the cuto
    Spans entry that produced the signal (the exact failing span), so Phase 3 corrects a location, not a guess.
 
 **Phase 3 — Correct (max 3 rounds)**
-9. If `Verdict` has fails → **RCA first, then re-dispatch.**
+9. If `Verdict` has fails → **RCA first, then re-dispatch. RCA is COMPULSORY on any fail, not optional.**
    - **RCA:** spawn the **Auditor** in RCA-on-fail mode — `node prongs/compose-rca.mjs <runId>` (refuses
      with no failing verdict). It localizes the failing span, names the root cause, and emits an `rca`
      row `{…, target: output|harness, gate:"proposal"}`. Fail-closed: an RCA is a proposal, never an
      auto-fix (house-rule 1).
+   - **Enforced (PD-018):** this was doctrine but only a *reminder* — a rule in a SKILL file is a
+     reminder, only an executed check is a gate. `validate_prongs.py check_rca_on_fail` now makes it a
+     GATE: a verdict with a failing detector must be met by an `rca` that diagnoses it **or** an
+     `override` that explicitly accepts it — neither is an un-diagnosed fail, and it rejects the ledger.
+     This is what forces you to **fix the diagnosis, not the symptom**: no jumping from a fail straight
+     to a patch without a recorded root cause. (Forward-only.)
    - **Re-dispatch (target=output):** spawn a fresh **Do-er** with the RCA's `fix_hypothesis` — the
      *specific* failing detector **plus the span and the cause** (a localized primer, not "try again",
      FL-cf007). Re-run Phase 2. Repeat ≤3. On exhaustion → surface the open `Verdict` + `rca` to the

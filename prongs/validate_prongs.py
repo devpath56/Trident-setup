@@ -743,6 +743,37 @@ def check_durability_gate(rows):
     return out
 
 
+RCA_ON_FAIL_FROM = "2026-07-21T00:00:00Z"
+def check_rca_on_fail(rows):
+    """PD-018 — the deterministic RCA-on-fail trigger. Every FAIL forces a diagnosis: a verdict's failing
+    detector must be met by EITHER an `rca` grounded in that verdict (root cause + fix proposal) OR an
+    `override` that explicitly accepts it. Neither = an UN-DIAGNOSED fail — which is exactly where a
+    symptom-patch (fix this passage) silently stands in for a root-cause fix (fix the substrate). RCA was
+    optional (check_rca only validates ones that exist); this makes it COMPULSORY on failure, so you
+    diagnose the cause before you fix. Forward-only; overridden detectors are an accepted exception, not
+    an un-diagnosed fail."""
+    rcas = [r for r in rows if r.get("kind") == "rca"]
+    overrides = [r for r in rows if r.get("kind") == "override"]
+    out = []
+    for v in rows:
+        if v.get("kind") != "verdict" or v.get("ts", "") < RCA_ON_FAIL_FROM:
+            continue
+        failing = [d for d in (v.get("detectors") or []) if str(d.get("result", "")).strip().lower() == "fail"]
+        if not failing:
+            continue
+        diagnosed = any(r.get("verdictId") == v.get("id") for r in rcas)
+        all_accepted = all(
+            any(o.get("overrides") == v.get("id") and o.get("detector_id") == d.get("detector_id")
+                for o in overrides)
+            for d in failing)
+        if not diagnosed and not all_accepted:
+            out.append(f"verdict {v.get('id')} has failing detector(s) "
+                       f"{[d.get('detector_id') for d in failing]} with neither an rca (diagnosis) nor an "
+                       "override (acceptance): a fail must trigger a root-cause RCA before any fix — "
+                       "diagnose the cause, never patch the symptom (RCA-on-fail trigger, PD-018)")
+    return out
+
+
 # ── negative controls ─────────────────────────────────────────────────────────
 def controls():
     out = []
@@ -1059,6 +1090,26 @@ def controls():
                 not check_durability_gate([_res_v_old])))
     out.append(("PD-017 EXEMPTS a verdict that resolves nothing — no fix, no durability owed (no-op ban)",
                 not check_durability_gate([_plain_v])))
+
+    # PD-018 RCA-on-fail trigger
+    _v_fail = {"kind": "verdict", "id": "v-f", "ts": "2026-07-22T00:00:00Z",
+               "detectors": [{"detector_id": "CF-001", "result": "fail"}]}
+    _rca = {"kind": "rca", "id": "rca-f", "verdictId": "v-f"}
+    _ovr = {"kind": "override", "id": "ov-f", "overrides": "v-f", "detector_id": "CF-001"}
+    _v_pass = {"kind": "verdict", "id": "v-p", "ts": "2026-07-22T00:00:00Z",
+               "detectors": [{"detector_id": "CF-001", "result": "pass"}]}
+    _v_old = {"kind": "verdict", "id": "v-o", "ts": "2026-07-20T00:00:00Z",
+              "detectors": [{"detector_id": "CF-001", "result": "fail"}]}
+    out.append(("PD-018 FIRES on a failing verdict with no rca and no override (un-diagnosed fail)",
+                bool(check_rca_on_fail([_v_fail]))))
+    out.append(("PD-018 passes when the failing verdict is diagnosed by an rca (positive control)",
+                not check_rca_on_fail([_v_fail, _rca])))
+    out.append(("PD-018 passes when the failing detector is explicitly overridden (accepted, not un-diagnosed)",
+                not check_rca_on_fail([_v_fail, _ovr])))
+    out.append(("PD-018 EXEMPTS a clean verdict — no fail, no RCA owed",
+                not check_rca_on_fail([_v_pass])))
+    out.append(("PD-018 does NOT retro-fire on a pre-cutoff failing verdict (forward-gate)",
+                not check_rca_on_fail([_v_old])))
     return out
 
 
@@ -1088,6 +1139,7 @@ def main():
         ("PRIOR-ART build records the in-repo reuse scan before opening (PD-015)", check_prior_art(rows)),
         ("DURABILITY a guard-shipping phase proves the guard flips on revert (PD-017)", check_durability_gate(rows)),
         ("RCA on-fail diagnosis is a fail-closed proposal grounded in a real failing verdict", check_rca(rows)),
+        ("RCA-ON-FAIL every failing verdict triggers a root-cause RCA or an explicit override — no symptom-patch (PD-018)", check_rca_on_fail(rows)),
     ]:
         if probs:
             failed += 1
