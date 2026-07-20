@@ -35,7 +35,7 @@ def repo_is_trident_source(root=ROOT):
 # --- 2. meta-scope: the ONLY files a Trident meta-decision may touch ---
 # Widen this list only when Trident's own design genuinely grows a new home. Everything else is
 # object-level and must not be logged here.
-_ALLOWED_PREFIXES = (".claude/skills/", "failures/", "tests/")
+_ALLOWED_PREFIXES = (".claude/skills/", "failures/", "tests/", "prongs/")
 _ALLOWED_ROOT_FILES = {"CLAUDE.md", "README.md", "ARCHITECTURE.md", "INSTALL.md"}
 
 def _norm(path):
