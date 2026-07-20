@@ -70,6 +70,8 @@ _ig_cases = [
     ("scope gate: an empty out_of_scope is REJECTED (control)", not ig.check_intent_source({"intent_source": "asked", "goal": "g", "scope": {"in_scope": ["x"], "out_of_scope": []}})[0]),
     ("shape gate: bullets + table pass", ig.check_shape("| a | b |\n|---|---|\n- x\n  - y\n")[0]),
     ("shape gate: a prose paragraph is REJECTED (control)", not ig.check_shape("One sentence here. Two sentences here. Three sentences here.\n")[0]),
+    ("shape gate: unbounded prose behind a bullet prefix is REJECTED (control)", not ig.check_shape("- A. B. C. D. E. F. G.\n")[0]),
+    ("shape gate: a short multi-sentence reasoning bullet still passes", ig.check_shape("- A first point. A second, related. A third that connects.\n")[0]),
 ]
 for _name, _ok in _ig_cases:
     check(_ok, _name)

@@ -62,9 +62,16 @@ def check_intent_source(card):
 
 # A line that opens a bullet, table row, heading, quote, or fence is structural, not prose.
 STRUCTURAL = re.compile(r"^\s*([-*+•]|\d+[.)]|\||#{1,6}\s|>|```|~~~)")
+# A bullet specifically (not a table row/heading): the carve-out lets a bullet carry connected
+# multi-sentence reasoning, but not an UNBOUNDED paragraph. A whole paragraph prefixed with "- "
+# must not slip through (the cold audit's DriftFlag on this gate). So bullets get a generous cap.
+BULLET = re.compile(r"^\s*[-*+•]\s")
 # Sentence end: terminal punctuation followed by whitespace + capital, or end of string.
 SENTENCE_END = re.compile(r"[.!?][\"')\]]*(\s+(?=[A-Z(\"'])|\s*$)")
 PROSE_SENTENCE_LIMIT = 3
+# Higher than the prose limit on purpose: 3-4 connected sentences in a bullet are legitimate
+# (the carve-out); 6+ is a paragraph wearing a bullet prefix.
+BULLET_SENTENCE_LIMIT = 6
 
 
 def _sentences(line):
@@ -96,6 +103,11 @@ def check_shape(text, sentence_limit=PROSE_SENTENCE_LIMIT):
         structural = in_fence or not line.strip() or bool(STRUCTURAL.match(line))
         if structural:
             block = []
+            # A bullet may carry connected reasoning, but not unbounded prose: prefixing a whole
+            # paragraph with "- " must not exempt it from the sentence count.
+            if BULLET.match(line) and _sentences(line) >= BULLET_SENTENCE_LIMIT:
+                return False, (f"line {n}: {_sentences(line)} sentences crammed into one bullet "
+                               f"(unbounded prose behind a bullet prefix)")
             continue
         if not block:
             block_start = n
