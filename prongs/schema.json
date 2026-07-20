@@ -27,7 +27,7 @@
     },
     "verdict": {
       "required": ["id", "kind", "ts", "runId", "intentCardId", "detectors"],
-      "notes": "Written by the Auditor. intentCardId proves which IntentCard it actually read (C1)."
+      "notes": "Written by the Auditor. intentCardId proves which IntentCard it actually read (C1). Each `detectors` entry is {detector_id, result: pass|fail, signal_seen, span_ref?}: `span_ref` is OPTIONAL and, on a fail, names the Spans entry whose output/error produced the signal — so correction gets a location, not just a detector id (the 'exact failing line'). Optional keeps every pre-span_ref verdict schema-valid; it is required, hard, only on an `rca` row (failing_span_ref)."
     },
     "override": {
       "required": ["id", "kind", "ts", "runId", "overrides", "reason"],
@@ -36,12 +36,18 @@
     "fanout": {
       "required": ["id", "kind", "ts", "runId", "work_units", "independence"],
       "notes": "Written before the orchestrator launches parallel Do-ers. work_units is [{name, paths:[...]}] where paths are the REPO-RELATIVE or sanitized prefixes each unit touches (never absolute home paths). independence is {status: 'asserted'|'discharged', evidence}. check_fanout_independence rejects a fan-out of >=2 units unless independence was DISCHARGED and the paths are pairwise disjoint: two units editing the same prefix are not independent, and 'asserted' is an assumption, not a discharged gate input."
+    },
+    "rca": {
+      "required": ["id", "kind", "ts", "runId", "verdictId", "failing_detector", "failing_span_ref", "root_cause", "target", "fix_hypothesis", "gate"],
+      "notes": "The Auditor's RCA-on-fail sub-phase (TraceRoot's root-cause pillar, bent to house-rule 1). Written ONLY when a Verdict has a failing detector, before Phase-3 re-dispatch. Localizes the failure and proposes a targeted fix: verdictId names the real failing verdict; failing_detector + failing_span_ref pin WHERE (the exact failing span, from spans.mjs); root_cause is WHY; target is 'output' (the fix_hypothesis becomes the Do-er's re-dispatch primer) or 'harness' (it drafts a CF/PD proposal routed through the log-failure Auditor-approval gate — never auto-committed). gate MUST be 'proposal': an RCA is DETECTION not root-cause (an LLM's analysis, not a made-impossible guard), so it is fail-closed and can never itself pass or apply work. check_rca enforces the evidence + the fail-closed gate; it does not judge whether the named cause is the TRUE cause (that is promotion judgment)."
     }
   },
   "enum": {
-    "kind": ["intent", "assumptions", "ratverdict", "probe", "drift", "verdict", "override", "close", "fanout"],
+    "kind": ["intent", "assumptions", "ratverdict", "probe", "drift", "verdict", "override", "close", "fanout", "rca"],
     "intent_source": ["asked", "inferred"],
     "result": ["PASS", "FAIL"],
-    "determination": ["ConflictFlag", "DriftFlag", "no-drift"]
+    "determination": ["ConflictFlag", "DriftFlag", "no-drift"],
+    "rca_target": ["output", "harness"],
+    "rca_gate": ["proposal"]
   }
 }

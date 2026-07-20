@@ -65,6 +65,16 @@ append({ id: 'v-right', kind: 'verdict', ts: '2026-07-20T00:01:00Z', runId: 'r',
          intentCardId: intentId, detectors: [{ detector_id: 'd', result: 'pass', signal_seen: 'observed' }] });
 check('close SUCCEEDS once a verdict cites the real IntentCard', run('close-session.mjs', ['r']).status === 0);
 
+// ── compose-rca is the RCA-on-fail evidence gate ──────────────────────────────
+// Only the passing verdicts above exist for run 'r', so an RCA has nothing to diagnose: REFUSE.
+check('compose-rca REFUSES with no FAILING verdict (exit 2)',
+  run('compose-rca.mjs', ['r']).status === 2);
+// Now a real failing verdict exists; the RCA prompt can be composed.
+append({ id: 'v-fail', kind: 'verdict', ts: '2026-07-20T00:02:00Z', runId: 'r', intentCardId: intentId,
+         detectors: [{ detector_id: 'CF-046', result: 'fail', signal_seen: 'narrated a write with no tool call', span_ref: 'Bash#3' }] });
+check('compose-rca EMITS a prompt once a failing verdict exists',
+  run('compose-rca.mjs', ['r']).status === 0);
+
 // ── rat.mjs: the phase-opener (house-rule 0) ──────────────────────────────────
 // Exercised here so removing rat.mjs fails selftest (otherwise the tool is an orphan while
 // only its gate is wired). Fresh run id so it does not collide with the door test above.

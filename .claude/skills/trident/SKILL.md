@@ -16,7 +16,8 @@ description: Wrap a working session in a three-prong quality harness — a Do-er
    **Hard block: no build until it passes.** On fail → stop, report, `log failure`.
 1. **Build** — Do-er works only past the gate → `Output` + `Spans`.
 2. **Audit** — Simba drift-checks the `Output`; Auditor runs detectors → `Verdict` (deterministic → structural → judge).
-3. **Correct** — on fail, return the *specific* failing detector to the Do-er; bounded retries (max 3).
+3. **Correct** — on fail, the Auditor runs **RCA-on-fail** (localize the span + root cause → an `rca`
+   proposal), then re-dispatch the Do-er with that localized primer; bounded retries (max 3).
 4. **Close** — on pass, surface to the user; on a NEW failure mode, `log failure`.
 
 ## Runbook — what to do when the user says `invoke trident`
@@ -68,18 +69,34 @@ it. A single Phase-0 RAT no longer covers the run. Forward-only: work predating 
 
 **Phase 1 — Build**
 6. Spawn **Do-er** (Opus): input = task + `IntentCard` (honor must_haves / forbid / pinned_feedback).
-   → returns `Output` (the diff/result) + `Spans` (short trace; mark ⊘ root / ⚠ error).
+   → returns `Output` (the diff/result). The Do-er's `Spans` are **not** taken from its self-narration:
+   derive them from the Do-er subagent's **actual tool-call transcript** with
+   `node prongs/spans.mjs <transcript.jsonl>` (reduced OpenInference spans; ⊘ root / ⚠ error). narrated ==
+   executed by construction — the CF-046 gap cannot open because the trace is captured, not authored. The
+   extractor reads the transcript FILE; never paste the transcript into a prong's context.
 
 **Phase 2 — Audit**
 7. Spawn **Simba**: input = `Output` + `IntentCard` (Output only — never the Do-er's reasoning).
    → returns `DriftFlag` {drifted_from, evidence} or "no drift".
-8. Spawn **Auditor** (Sonnet 5): input = `Output`, `Spans`, `DriftFlag`, and the active detectors from
-   `failures/failures.jsonl`. Order: deterministic → structural → (only if needed) rubric-judge; **fail closed**.
-   → returns `Verdict` [{detector_id, pass|fail, signal_seen}].
+8. Spawn **Auditor** (Sonnet 5): input = `Output`, the **extracted `Spans`** (from `prongs/spans.mjs`, step 6),
+   `DriftFlag`, and the active detectors from `failures/failures.jsonl`. Order: deterministic → structural →
+   (only if needed) rubric-judge; **fail closed**.
+   → returns `Verdict` [{detector_id, pass|fail, signal_seen, span_ref?}] — on a fail, `span_ref` names the
+   Spans entry that produced the signal (the exact failing span), so Phase 3 corrects a location, not a guess.
 
 **Phase 3 — Correct (max 3 rounds)**
-9. If `Verdict` has fails → spawn a fresh **Do-er** with the *specific* failing detector(s) to fix; re-run Phase 2.
-   Repeat ≤3. On exhaustion → surface the open `Verdict` to the user; never loop silently (FL-cf016).
+9. If `Verdict` has fails → **RCA first, then re-dispatch.**
+   - **RCA:** spawn the **Auditor** in RCA-on-fail mode — `node prongs/compose-rca.mjs <runId>` (refuses
+     with no failing verdict). It localizes the failing span, names the root cause, and emits an `rca`
+     row `{…, target: output|harness, gate:"proposal"}`. Fail-closed: an RCA is a proposal, never an
+     auto-fix (house-rule 1).
+   - **Re-dispatch (target=output):** spawn a fresh **Do-er** with the RCA's `fix_hypothesis` — the
+     *specific* failing detector **plus the span and the cause** (a localized primer, not "try again",
+     FL-cf007). Re-run Phase 2. Repeat ≤3. On exhaustion → surface the open `Verdict` + `rca` to the
+     user; never loop silently (FL-cf016).
+   - **Self-heal (target=harness):** if the RCA finds a mode the harness should have caught, route its
+     proposal through `log failure` (Auditor-approves → commit) — the compounding loop, landing a
+     *proposal*, never an auto-commit.
 
 **Phase 4 — Close**
 10. On pass → surface `Output` to the user. If a NEW failure mode appeared that no CF covers → `log failure`.

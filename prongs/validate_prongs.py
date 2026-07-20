@@ -110,12 +110,14 @@ def check_schema(rows):
 # correctness — the same coarse-and-forward stance as the other gates.
 SCHEMA_DEPENDENCIES = {
     # enum.kind must contain every kind a validator dispatches on
-    "kinds": ["assumptions", "fanout"],
+    "kinds": ["assumptions", "fanout", "rca"],
     # kinds.<name>.required must contain every field a validator reads off that row
     "required": {
         "assumptions": ["phase", "assumptions"],
         "fanout": ["work_units", "independence"],
         "ratverdict": ["phase"],
+        # check_rca reads these off an rca row; dropping any from the schema un-gates it
+        "rca": ["verdictId", "failing_detector", "failing_span_ref", "root_cause", "target", "fix_hypothesis", "gate"],
     },
 }
 
@@ -517,6 +519,60 @@ def check_rat(rows):
     return problems
 
 
+# ── RCA-on-fail: a diagnosis is a fail-closed PROPOSAL grounded in a real failing verdict ──
+# Change 3 / TraceRoot's root-cause pillar, bent to house-rule 1. When a Verdict fails, the Auditor
+# may emit an `rca` row that localizes the failing span and proposes a targeted fix. It is DETECTION,
+# not root-cause (an LLM's analysis, not a made-impossible guard), so it is fail-closed: it can never
+# itself pass or apply work. This gate makes that checkable:
+#   (a) EVIDENCE — verdictId names a real verdict that actually carries a failing detector. An RCA
+#       diagnoses a FAIL; diagnosing a pass (or a phantom verdict) is the accident this forbids.
+#   (b) LOCALIZED — failing_detector and failing_span_ref are named (the exact failing span is the
+#       whole point; without it the RCA is just a re-dispatch with extra words).
+#   (c) REAL DIAGNOSIS — root_cause and fix_hypothesis are present and non-placeholder.
+#   (d) TARGETED — target is 'output' (primer to the Do-er) or 'harness' (a CF/PD proposal).
+#   (e) FAIL-CLOSED — gate is exactly 'proposal'. Any other value (applied/auto/merge) is rejected:
+#       an RCA never auto-applies; a human/the Auditor promotes it through the log-failure gate.
+# SCOPE HONESTY: this gates the ARTIFACT, not whether the named cause is the TRUE cause — that is the
+# promotion judgment, not a mechanizable property. Detection, not root-cause; house-rule 1 ranks it so.
+RCA_TARGETS = ("output", "harness")
+
+
+def check_rca(rows):
+    verdicts = {r.get("id"): r for r in rows if r.get("kind") == "verdict"}
+    problems = []
+    for r in [r for r in rows if r.get("kind") == "rca"]:
+        rid = r.get("id")
+        vid = r.get("verdictId")
+        v = verdicts.get(vid)
+        if not vid or v is None:
+            problems.append(
+                f"rca {rid}: verdictId {vid!r} names no verdict in the ledger. An RCA must be "
+                f"grounded in a real failing verdict, not invented (evidence gate)"
+            )
+        else:
+            failed = [d for d in (v.get("detectors") or []) if str(d.get("result", "")).strip().lower() == "fail"]
+            if not failed:
+                problems.append(
+                    f"rca {rid}: verdict {vid} carries no failing detector. An RCA diagnoses a FAIL, "
+                    f"never a pass — diagnosing a clean verdict is the accident this gate forbids"
+                )
+        for field in ("failing_detector", "failing_span_ref", "root_cause", "fix_hypothesis"):
+            if _blank(r.get(field)):
+                problems.append(f"rca {rid}: {field} is empty. An RCA must localize and propose (not just assert a fail)")
+        for field in ("root_cause", "fix_hypothesis"):
+            val = r.get(field)
+            if not _blank(val) and len(str(val).strip()) < 12:
+                problems.append(f"rca {rid}: {field} is a placeholder ({val!r}), too short to be a real diagnosis")
+        if r.get("target") not in RCA_TARGETS:
+            problems.append(f"rca {rid}: target {r.get('target')!r} must be one of {list(RCA_TARGETS)} (output=primer, harness=CF/PD proposal)")
+        if r.get("gate") != "proposal":
+            problems.append(
+                f"rca {rid}: gate {r.get('gate')!r} must be 'proposal'. An RCA is fail-closed — it is "
+                f"DETECTION, not root-cause, and can never auto-apply a fix (house-rule 1)"
+            )
+    return problems
+
+
 # ── negative controls ─────────────────────────────────────────────────────────
 def controls():
     out = []
@@ -552,10 +608,12 @@ def controls():
     # the live schema.json. sk() returns a FRESH fully-conformant schema each call, so a negative
     # control can drop exactly one dependency. The 'phase' branch is the field this session added,
     # so it is the branch that fires when schema.json is reverted to HEAD.
-    sk = lambda: {"enum": {"kind": ["assumptions", "fanout"]},
+    sk = lambda: {"enum": {"kind": ["assumptions", "fanout", "rca"]},
                   "kinds": {"assumptions": {"required": ["phase", "assumptions"]},
                             "fanout": {"required": ["work_units", "independence"]},
-                            "ratverdict": {"required": ["phase"]}}}
+                            "ratverdict": {"required": ["phase"]},
+                            "rca": {"required": ["verdictId", "failing_detector", "failing_span_ref",
+                                                 "root_cause", "target", "fix_hypothesis", "gate"]}}}
     out.append(("C0-DEP accepts a schema declaring every consumed kind+field (positive control)",
                 not check_schema_kinds(schema=sk())))
     _no_fanout = sk(); _no_fanout["enum"]["kind"].remove("fanout")
@@ -567,6 +625,12 @@ def controls():
     _no_indep = sk(); _no_indep["kinds"]["fanout"]["required"].remove("independence")
     out.append(("C0-DEP rejects a schema whose fanout.required drops 'independence'",
                 bool(check_schema_kinds(schema=_no_indep))))
+    _no_rca = sk(); _no_rca["enum"]["kind"].remove("rca")
+    out.append(("C0-DEP rejects a schema whose enum.kind drops 'rca'",
+                bool(check_schema_kinds(schema=_no_rca))))
+    _no_span = sk(); _no_span["kinds"]["rca"]["required"].remove("failing_span_ref")
+    out.append(("C0-DEP rejects a schema whose rca.required drops 'failing_span_ref' (the localizing field)",
+                bool(check_schema_kinds(schema=_no_span))))
 
     no_cite = [{"id": "v1", "kind": "verdict", "ts": "t", "runId": "r", "detectors": []}]
     out.append(("C1 rejects a verdict with no intentCardId", bool(check_verdict_cites_intent(no_cite))))
@@ -715,6 +779,37 @@ def controls():
                 bool(check_rat([rat(phase="build"), vr()]))))
     out.append(("HR-0 rejects a forward work artifact with NO phase label",
                 bool(check_rat([pr(phase=None)]))))
+
+    # --- RCA-on-fail: a fail-closed proposal grounded in a real failing verdict ---
+    # The positive control pairs a real failing verdict with a well-formed rca; each negative
+    # breaks exactly one gate branch (no evidence / diagnosing a pass / not fail-closed / bad
+    # target / placeholder), so gutting check_rca flips at least one.
+    failing_v = {"id": "vF", "kind": "verdict", "ts": "2026-07-21T00:00:00Z", "runId": "r",
+                 "intentCardId": "i1",
+                 "detectors": [{"detector_id": "CF-046", "result": "fail",
+                                "signal_seen": "narrated a write with no matching tool call",
+                                "span_ref": "Bash#3"}]}
+    rc = lambda **kw: {"id": "rcaX", "kind": "rca", "ts": "2026-07-21T00:00:00Z", "runId": "r",
+                       "verdictId": "vF", "failing_detector": "CF-046", "failing_span_ref": "Bash#3",
+                       "root_cause": "the write was narrated but the Bash#3 tool call was never issued",
+                       "target": "output",
+                       "fix_hypothesis": "re-dispatch the Do-er to actually issue the write at span Bash#3",
+                       "gate": "proposal", **kw}
+    out.append(("RCA accepts a well-formed proposal grounded in a real failing verdict (positive control)",
+                not check_rca([failing_v, rc()])))
+    out.append(("RCA rejects an rca whose verdictId names no verdict (no evidence)",
+                bool(check_rca([rc(verdictId="v-nope")]))))
+    out.append(("RCA rejects diagnosing a verdict with NO failing detector (an RCA is for a FAIL)",
+                bool(check_rca([{**failing_v, "detectors": [{"detector_id": "CF-046", "result": "pass",
+                                                             "signal_seen": "ok"}]}, rc()]))))
+    out.append(("RCA rejects gate != 'proposal' (fail-closed: no auto-apply)",
+                bool(check_rca([failing_v, rc(gate="applied")]))))
+    out.append(("RCA rejects an invalid target",
+                bool(check_rca([failing_v, rc(target="everything")]))))
+    out.append(("RCA rejects a placeholder root_cause",
+                bool(check_rca([failing_v, rc(root_cause="TBD")]))))
+    out.append(("RCA rejects a missing failing_span_ref (the localizing field)",
+                bool(check_rca([failing_v, rc(failing_span_ref="  ")]))))
     return out
 
 
@@ -740,6 +835,7 @@ def main():
         ("HR-12 grader is not the subject", check_rule12_not_self_graded(rows)),
         ("HR-6 irreversible actions are approved", check_rule6_reversibility(rows)),
         ("HR-0 RAT opens each phase before any build", check_rat(rows)),
+        ("RCA on-fail diagnosis is a fail-closed proposal grounded in a real failing verdict", check_rca(rows)),
     ]:
         if probs:
             failed += 1

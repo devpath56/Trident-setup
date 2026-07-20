@@ -21,7 +21,12 @@ description: The Sonnet 5-model judge prong of Trident. Owns the Phase-0 feasibi
 ## Inputs → Output
 - In: `Output`, `Spans` (Do-er), the active **detectors** (from `failures/failures.jsonl`), `IntentCard`
   and any `DriftFlag` (Simba).
-- Out: `Verdict` = `{ detector_id, pass|fail, signal_seen }[]` + one rubric block if a judge ran.
+- Out: `Verdict` = `{ detector_id, pass|fail, signal_seen, span_ref? }[]` + one rubric block if a judge ran.
+  - **On a fail, name the span.** `span_ref` is the `Spans` entry whose output/error produced the signal —
+    the "exact failing line" (borrowed from TraceRoot). It turns Phase-3 correction from "re-dispatch with
+    the failing detector" into "re-dispatch with the failing detector **and the span that broke**", a tighter
+    primer that wastes fewer retries. Optional (a pass rarely needs one); when a fail can be localized to a
+    span, omitting it is a weaker verdict, not an invalid one.
 
 ## The Auditor decides on Simba's drift (Simba proposes, Auditor disposes)
 Simba only *detects* drift from your intent and hands over a `DriftFlag`; the Auditor owns the response:
@@ -97,6 +102,26 @@ criterion without bumping the version and re-recording the hash, and the rubric 
 a rubric is gate-ready only if the hash matches, the criterion is binary, and its calibration dimension
 clears the TNR gate (`tnr.py`). Wired into `tests/selftest.py`. A rubric edit is a tracked change with a
 re-run of the TNR gate, never an untracked prompt tweak.
+
+## RCA-on-fail — localize the failure, propose a fix (runs only on a FAIL; TraceRoot's root-cause pillar)
+When a `Verdict` has a failing detector, do not hand Phase 3 a blind "try again". First run a bounded
+diagnosis — the dep-free, fail-closed form of TraceRoot's RCA-and-fix-PR agent:
+- **Compose it from disk:** `node prongs/compose-rca.mjs <runId>`. It **refuses** unless a real failing
+  verdict exists (the evidence gate — an RCA diagnoses a FAIL, never a pass), and anchors each failing
+  detector to the CF guard it was defending.
+- **Localize:** name the exact failing **span** (from the extracted `Spans`) — the "exact failing line".
+  Confirm or correct the verdict's `span_ref`; never fabricate one.
+- **Root cause:** one specific, falsifiable sentence naming the mechanism — not "the Do-er erred".
+- **Target one lane** and emit an `rca` row `{verdictId, failing_detector, failing_span_ref, root_cause,
+  target, fix_hypothesis, gate:"proposal"}`:
+  - `output` → the `fix_hypothesis` is the *specific* Phase-3 primer for the fresh Do-er (failing
+    detector + span + cause), replacing FL-cf007's "specific failing detector" with a localized cause.
+  - `harness` → the failure is a mode the harness should have caught; draft a CF/PD proposal and route
+    it through **`log failure`** (you approve, then commit). This is the self-healing loop — but it lands
+    a *proposal*, never an auto-commit.
+- **Fail closed (house-rule 1):** `gate` is always `"proposal"`. An RCA is DETECTION, not root-cause (an
+  LLM's analysis, not a made-impossible guard), so it can never itself pass or apply work. `check_rca`
+  enforces the evidence, the localizing span, a non-placeholder cause, and the `proposal` gate.
 
 ## Rules
 - **Fail closed.** No judge verdict (timeout/error) = do not pass (FL-cf049: a fail-open judge is not a guard).
