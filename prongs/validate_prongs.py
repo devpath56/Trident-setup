@@ -110,7 +110,7 @@ def check_schema(rows):
 # correctness — the same coarse-and-forward stance as the other gates.
 SCHEMA_DEPENDENCIES = {
     # enum.kind must contain every kind a validator dispatches on
-    "kinds": ["assumptions", "fanout", "rca"],
+    "kinds": ["assumptions", "fanout", "rca", "durability"],
     # kinds.<name>.required must contain every field a validator reads off that row
     "required": {
         "assumptions": ["phase", "assumptions"],
@@ -118,6 +118,8 @@ SCHEMA_DEPENDENCIES = {
         "ratverdict": ["phase"],
         # check_rca reads these off an rca row; dropping any from the schema un-gates it
         "rca": ["verdictId", "failing_detector", "failing_span_ref", "root_cause", "target", "fix_hypothesis", "gate"],
+        # check_durability_gate reads these off a durability row; dropping any un-gates the phase-close proof
+        "durability": ["verdictId", "reverted", "control_flipped"],
     },
 }
 
@@ -718,6 +720,29 @@ def check_design_prong_no_execution(spans, kind="ratverdict"):
     return []
 
 
+DURABILITY_FROM = "2026-07-21T00:00:00Z"
+def check_durability_gate(rows):
+    """PD-017 phase-close bookend to HR-0 (which OPENS a phase). A phase that SHIPPED A GUARD — a
+    verdict that `resolves` a CF, i.e. a real fix, which by Trident discipline becomes a check — must
+    also carry a `durability` record proving the guard holds: revert the fix and a NAMED control
+    flips red. Its absence is the fix-and-guard-revert-together leak (the census incident: the guard
+    reverted with the fix and the baseline went silently green). Conditional by design: it fires ONLY
+    on resolves-verdicts, so RAT/audit phases that shipped no fix are exempt (no-op ban). Pre-emptive
+    guards (PDs) are covered by mutation (mutate.py); this gate covers FIX-driven guards, which
+    mutation does not. Forward-only from the cutoff so existing resolved verdicts are grandfathered."""
+    out = []
+    durs = [r for r in rows if r.get("kind") == "durability"]
+    for v in [r for r in rows if r.get("kind") == "verdict"
+              and str(r.get("resolves") or "").strip() and r.get("ts", "") >= DURABILITY_FROM]:
+        match = [d for d in durs if d.get("verdictId") == v.get("id")
+                 and str(d.get("reverted") or "").strip() and str(d.get("control_flipped") or "").strip()]
+        if not match:
+            out.append(f"verdict {v.get('id')} resolves {v.get('resolves')!r} (ships a guard) but has no "
+                       "durability proof: a fix that adds a guard must show the guard flips red when the "
+                       "fix is reverted (prove-durable, PD-017 phase-close gate). No matching durability record")
+    return out
+
+
 # ── negative controls ─────────────────────────────────────────────────────────
 def controls():
     out = []
@@ -753,12 +778,13 @@ def controls():
     # the live schema.json. sk() returns a FRESH fully-conformant schema each call, so a negative
     # control can drop exactly one dependency. The 'phase' branch is the field this session added,
     # so it is the branch that fires when schema.json is reverted to HEAD.
-    sk = lambda: {"enum": {"kind": ["assumptions", "fanout", "rca"]},
+    sk = lambda: {"enum": {"kind": ["assumptions", "fanout", "rca", "durability"]},
                   "kinds": {"assumptions": {"required": ["phase", "assumptions"]},
                             "fanout": {"required": ["work_units", "independence"]},
                             "ratverdict": {"required": ["phase"]},
                             "rca": {"required": ["verdictId", "failing_detector", "failing_span_ref",
-                                                 "root_cause", "target", "fix_hypothesis", "gate"]}}}
+                                                 "root_cause", "target", "fix_hypothesis", "gate"]},
+                            "durability": {"required": ["verdictId", "reverted", "control_flipped"]}}}
     out.append(("C0-DEP accepts a schema declaring every consumed kind+field (positive control)",
                 not check_schema_kinds(schema=sk())))
     _no_fanout = sk(); _no_fanout["enum"]["kind"].remove("fanout")
@@ -1018,6 +1044,21 @@ def controls():
                 not check_design_prong_no_execution([_root, _ok], "ratverdict")))
     out.append(("PD-016 EXEMPTS a build prong (verdict) that legitimately executes",
                 not check_design_prong_no_execution([_root, _bash_span], "verdict")))
+
+    # PD-017 phase-close durability gate
+    _res_v = {"kind": "verdict", "id": "v-res", "ts": "2026-07-22T00:00:00Z", "resolves": "CF-999"}
+    _dur_ok = {"kind": "durability", "id": "d-1", "ts": "2026-07-22T00:01:00Z", "verdictId": "v-res",
+               "reverted": "undid the census --ledger fix", "control_flipped": "DURABLE-LEDGER"}
+    _res_v_old = {"kind": "verdict", "id": "v-old", "ts": "2026-07-20T00:00:00Z", "resolves": "CF-000"}
+    _plain_v = {"kind": "verdict", "id": "v-plain", "ts": "2026-07-22T00:00:00Z"}
+    out.append(("PD-017 FIRES when a guard-shipping (resolves) verdict has no durability proof (control fired)",
+                bool(check_durability_gate([_res_v]))))
+    out.append(("PD-017 passes when the resolves-verdict has a matching durability record (positive control)",
+                not check_durability_gate([_res_v, _dur_ok])))
+    out.append(("PD-017 does NOT fire on a resolves-verdict before the cutoff (forward-gate only)",
+                not check_durability_gate([_res_v_old])))
+    out.append(("PD-017 EXEMPTS a verdict that resolves nothing — no fix, no durability owed (no-op ban)",
+                not check_durability_gate([_plain_v])))
     return out
 
 
@@ -1045,6 +1086,7 @@ def main():
         ("HR-6 irreversible actions are approved", check_rule6_reversibility(rows)),
         ("HR-0 RAT opens each phase before any build", check_rat(rows)),
         ("PRIOR-ART build records the in-repo reuse scan before opening (PD-015)", check_prior_art(rows)),
+        ("DURABILITY a guard-shipping phase proves the guard flips on revert (PD-017)", check_durability_gate(rows)),
         ("RCA on-fail diagnosis is a fail-closed proposal grounded in a real failing verdict", check_rca(rows)),
     ]:
         if probs:

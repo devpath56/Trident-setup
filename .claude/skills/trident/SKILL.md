@@ -79,6 +79,18 @@ missing? what is the cheapest probe to falsify it?) before a line of that phase 
 `phase`, and `validate_prongs.py` HR-0 rejects any that has no RATVerdict for that same phase before
 it. A single Phase-0 RAT no longer covers the run. Forward-only: work predating the gate is exempt.
 
+**Every phase that SHIPPED A GUARD closes with `/prove-durable` (PD-017) — the bookend to HR-0.**
+If a phase produced a `verdict` that `resolves` a CF (a real fix, which by Trident discipline becomes
+a check), that fix must be shown *durable* before the phase closes: **revert the fix and confirm a
+named control flips red.** Record it as a `durability` row {`verdictId` → the resolving verdict,
+`reverted` → the fix undone, `control_flipped` → the control that went red}. **Enforced:**
+`validate_prongs.py check_durability_gate` rejects a resolves-verdict with no matching durability
+record. **Conditional by design** — it fires ONLY on guard-shipping phases, so a RAT or a clean audit
+(no fix) closes without ceremony (no-op ban). Pre-emptive guards (PDs) are exempt here because
+mutation (`mutate.py`) already proves each new check is killed by its own control; this gate covers
+the class mutation cannot — reverting the *actual fix in the actual file* and confirming the *real*
+suite flips (the fix-and-guard-revert-together leak). Forward-only from the cutoff.
+
 **Phase 1 — Build**
 6. Spawn **Do-er** (Opus): input = task + `IntentCard` (honor must_haves / forbid / pinned_feedback).
    → returns `Output` (the diff/result). The Do-er's `Spans` are **not** taken from its self-narration:

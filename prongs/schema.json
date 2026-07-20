@@ -2,52 +2,169 @@
   "$comment": "Prong artifacts. This file is the whole point of C0: the RCA found that every Trident mechanism with a file + schema + validator survived, and every one defined only as a prose shape in a skill file decayed to zero use. IntentCard and DriftFlag had a name and a description and nothing else.",
   "kinds": {
     "intent": {
-      "required": ["id", "kind", "ts", "runId", "intent_source", "scope", "goal"],
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "intent_source",
+        "scope",
+        "goal"
+      ],
       "notes": "Written by Simba at step 0. intent_source must be 'asked'; 'inferred' is not a valid gate input (house-rule 15)."
     },
     "assumptions": {
-      "required": ["id", "kind", "ts", "runId", "phase", "assumptions"],
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "phase",
+        "assumptions"
+      ],
       "notes": "Written by the Do-er at the START of a phase. `phase` is the phase these assumptions belong to. `assumptions` is a list of entries, each {claim, kill_power (int, >=0), uncertainty, status}. status is one of 'probed' (this was the phase's probed riskiest, resolved by the cheapest falsifying experiment), 'overridden' (deferred but explicitly accepted with a logged reason), or 'deferred' (neither probed nor overridden). check_deferred_assumption_gate CONSUMES this: a 'deferred' entry with kill_power >= K (default 4) that is carried into the NEXT phase with no resolution blocks that next phase from starting (CF-068). Adding `phase` is backward-compatible: zero assumptions rows predate it."
     },
     "ratverdict": {
-      "required": ["id", "kind", "ts", "runId", "phase", "riskiest_assumption", "cheapest_probe", "gate", "push_decision"],
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "phase",
+        "riskiest_assumption",
+        "cheapest_probe",
+        "gate",
+        "push_decision"
+      ],
       "notes": "Opens a phase. Written by rat.mjs at the START of every phase, before anything is built (house-rule 0). `phase` names the phase it opens; `push_decision` is the first-principles adversarial answer to 'should I build this?'; `cheapest_probe` is the falsifying experiment that must run before the build. A probe with no ratverdict before it in the same run means something was built before its RAT, which validate_prongs rejects."
     },
     "probe": {
-      "required": ["id", "kind", "ts", "runId", "riskiest", "result"],
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "riskiest",
+        "result"
+      ],
       "notes": "result is PASS or FAIL. A FAIL with no matching override row blocks every later run (C3)."
     },
     "close": {
-      "required": ["id", "kind", "ts", "runId", "verdictId"],
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "verdictId"
+      ],
       "notes": "Written only by close-session.mjs, which refuses to emit one unless the exit conditions hold. Its presence is the proof a session ended through the door rather than by being abandoned."
     },
     "drift": {
-      "required": ["id", "kind", "ts", "runId", "determination", "drifted_from"],
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "determination",
+        "drifted_from"
+      ],
       "notes": "Simba proposes. Every drift row needs a matching verdict row or it is orphaned (C2)."
     },
     "verdict": {
-      "required": ["id", "kind", "ts", "runId", "intentCardId", "detectors"],
-      "notes": "Written by the Auditor. intentCardId proves which IntentCard it actually read (C1). Each `detectors` entry is {detector_id, result: pass|fail, signal_seen, span_ref?}: `span_ref` is OPTIONAL and, on a fail, names the Spans entry whose output/error produced the signal — so correction gets a location, not just a detector id (the 'exact failing line'). Optional keeps every pre-span_ref verdict schema-valid; it is required, hard, only on an `rca` row (failing_span_ref)."
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "intentCardId",
+        "detectors"
+      ],
+      "notes": "Written by the Auditor. intentCardId proves which IntentCard it actually read (C1). Each `detectors` entry is {detector_id, result: pass|fail, signal_seen, span_ref?}: `span_ref` is OPTIONAL and, on a fail, names the Spans entry whose output/error produced the signal \u2014 so correction gets a location, not just a detector id (the 'exact failing line'). Optional keeps every pre-span_ref verdict schema-valid; it is required, hard, only on an `rca` row (failing_span_ref)."
     },
     "override": {
-      "required": ["id", "kind", "ts", "runId", "overrides", "reason"],
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "overrides",
+        "reason"
+      ],
       "notes": "An explicit, logged decision to proceed past a failure. Never implicit. `overrides` names WHAT is being accepted: a probe id (Phase-0 gate, C3) OR a verdict id, in which case the OPTIONAL `detector_id` names the specific failing detector within that verdict being accepted (the detector-gate / ESCAPE check). A close that carries a failing detector with no such override is a false-PASS escape."
     },
     "fanout": {
-      "required": ["id", "kind", "ts", "runId", "work_units", "independence"],
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "work_units",
+        "independence"
+      ],
       "notes": "Written before the orchestrator launches parallel Do-ers. work_units is [{name, paths:[...]}] where paths are the REPO-RELATIVE or sanitized prefixes each unit touches (never absolute home paths). independence is {status: 'asserted'|'discharged', evidence}. check_fanout_independence rejects a fan-out of >=2 units unless independence was DISCHARGED and the paths are pairwise disjoint: two units editing the same prefix are not independent, and 'asserted' is an assumption, not a discharged gate input."
     },
     "rca": {
-      "required": ["id", "kind", "ts", "runId", "verdictId", "failing_detector", "failing_span_ref", "root_cause", "target", "fix_hypothesis", "gate"],
-      "notes": "The Auditor's RCA-on-fail sub-phase (TraceRoot's root-cause pillar, bent to house-rule 1). Written ONLY when a Verdict has a failing detector, before Phase-3 re-dispatch. Localizes the failure and proposes a targeted fix: verdictId names the real failing verdict; failing_detector + failing_span_ref pin WHERE (the exact failing span, from spans.mjs); root_cause is WHY; target is 'output' (the fix_hypothesis becomes the Do-er's re-dispatch primer) or 'harness' (it drafts a CF/PD proposal routed through the log-failure Auditor-approval gate — never auto-committed). gate MUST be 'proposal': an RCA is DETECTION not root-cause (an LLM's analysis, not a made-impossible guard), so it is fail-closed and can never itself pass or apply work. check_rca enforces the evidence + the fail-closed gate; it does not judge whether the named cause is the TRUE cause (that is promotion judgment)."
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "verdictId",
+        "failing_detector",
+        "failing_span_ref",
+        "root_cause",
+        "target",
+        "fix_hypothesis",
+        "gate"
+      ],
+      "notes": "The Auditor's RCA-on-fail sub-phase (TraceRoot's root-cause pillar, bent to house-rule 1). Written ONLY when a Verdict has a failing detector, before Phase-3 re-dispatch. Localizes the failure and proposes a targeted fix: verdictId names the real failing verdict; failing_detector + failing_span_ref pin WHERE (the exact failing span, from spans.mjs); root_cause is WHY; target is 'output' (the fix_hypothesis becomes the Do-er's re-dispatch primer) or 'harness' (it drafts a CF/PD proposal routed through the log-failure Auditor-approval gate \u2014 never auto-committed). gate MUST be 'proposal': an RCA is DETECTION not root-cause (an LLM's analysis, not a made-impossible guard), so it is fail-closed and can never itself pass or apply work. check_rca enforces the evidence + the fail-closed gate; it does not judge whether the named cause is the TRUE cause (that is promotion judgment)."
+    },
+    "durability": {
+      "required": [
+        "id",
+        "kind",
+        "ts",
+        "runId",
+        "verdictId",
+        "reverted",
+        "control_flipped"
+      ],
+      "notes": "Phase-close proof of a fix's durability (prove-durable). Written when a verdict RESOLVES a CF (ships a guard): `verdictId` links the resolving verdict; `reverted` names the fix that was undone; `control_flipped` names the control that went RED once the fix was gone. Its absence for a resolves-verdict means the guard was never shown to catch the regression \u2014 the fix-and-guard-revert-together leak. check_durability_gate enforces it (forward-only)."
     }
   },
   "enum": {
-    "kind": ["intent", "assumptions", "ratverdict", "probe", "drift", "verdict", "override", "close", "fanout", "rca"],
-    "intent_source": ["asked", "inferred"],
-    "result": ["PASS", "FAIL"],
-    "determination": ["ConflictFlag", "DriftFlag", "no-drift"],
-    "rca_target": ["output", "harness"],
-    "rca_gate": ["proposal"]
+    "kind": [
+      "intent",
+      "assumptions",
+      "ratverdict",
+      "probe",
+      "drift",
+      "verdict",
+      "override",
+      "close",
+      "fanout",
+      "rca",
+      "durability"
+    ],
+    "intent_source": [
+      "asked",
+      "inferred"
+    ],
+    "result": [
+      "PASS",
+      "FAIL"
+    ],
+    "determination": [
+      "ConflictFlag",
+      "DriftFlag",
+      "no-drift"
+    ],
+    "rca_target": [
+      "output",
+      "harness"
+    ],
+    "rca_gate": [
+      "proposal"
+    ]
   }
 }
