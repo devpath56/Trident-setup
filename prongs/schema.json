@@ -32,10 +32,14 @@
     "override": {
       "required": ["id", "kind", "ts", "runId", "overrides", "reason"],
       "notes": "An explicit, logged decision to proceed past a failed probe. Never implicit."
+    },
+    "fanout": {
+      "required": ["id", "kind", "ts", "runId", "work_units", "independence"],
+      "notes": "Written before the orchestrator launches parallel Do-ers. work_units is [{name, paths:[...]}] where paths are the REPO-RELATIVE or sanitized prefixes each unit touches (never absolute home paths). independence is {status: 'asserted'|'discharged', evidence}. check_fanout_independence rejects a fan-out of >=2 units unless independence was DISCHARGED and the paths are pairwise disjoint: two units editing the same prefix are not independent, and 'asserted' is an assumption, not a discharged gate input."
     }
   },
   "enum": {
-    "kind": ["intent", "assumptions", "ratverdict", "probe", "drift", "verdict", "override", "close"],
+    "kind": ["intent", "assumptions", "ratverdict", "probe", "drift", "verdict", "override", "close", "fanout"],
     "intent_source": ["asked", "inferred"],
     "result": ["PASS", "FAIL"],
     "determination": ["ConflictFlag", "DriftFlag", "no-drift"]

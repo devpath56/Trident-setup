@@ -143,6 +143,56 @@ def check_probe_gate(rows, runs):
     return problems
 
 
+# ── fan-out independence: parallel work units must be PROVEN independent ───────
+# The orchestrator can launch parallel Do-ers, but nothing checked that their independence
+# was DISCHARGED (proven) rather than ASSERTED (assumed) before fan-out. This session's gap:
+# two work units were launched in parallel on the assumption they were independent, and that
+# assumption was never discharged into a record. Restated as a property of a `fanout` artifact
+# it becomes checkable. A fan-out of >= 2 units is safe only if independence.status ==
+# "discharged" AND the paths each unit touches are pairwise DISJOINT — two units editing the
+# same prefix are not independent, whatever the status field claims. A fan-out of < 2 units is
+# not a fan-out and passes. Like the C1-C3 gates this is coarse and forward: it gates the
+# artifact, not whether the paths listed are the real ones (a unit can under-declare what it
+# touches), which is detection, not root-cause.
+def _paths_overlap(a, b):
+    """True if two path prefixes touch the same tree: equal, or one contains the other."""
+    a, b = str(a).strip().strip("/"), str(b).strip().strip("/")
+    if not a or not b:
+        return False
+    return a == b or a.startswith(b + "/") or b.startswith(a + "/")
+
+
+def check_fanout_independence(rows):
+    problems = []
+    for r in [r for r in rows if r.get("kind") == "fanout"]:
+        units = r.get("work_units") or []
+        if len(units) < 2:
+            continue  # a single work unit is not a fan-out; nothing to prove independent
+        indep = r.get("independence") or {}
+        if indep.get("status") != "discharged":
+            problems.append(
+                f"fanout {r.get('id')}: independence asserted-not-discharged "
+                f"(status {indep.get('status')!r}). A parallel launch of {len(units)} work units "
+                f"needs independence DISCHARGED before fan-out, not assumed (house-rule 0)"
+            )
+            continue
+        overlaps = []
+        for a in range(len(units)):
+            for b in range(a + 1, len(units)):
+                for x in units[a].get("paths") or []:
+                    for y in units[b].get("paths") or []:
+                        if _paths_overlap(x, y):
+                            pair = sorted({str(x), str(y)})
+                            if pair not in overlaps:
+                                overlaps.append(pair)
+        if overlaps:
+            problems.append(
+                f"fanout {r.get('id')}: claimed discharged but paths overlap: {overlaps}. "
+                f"Work units sharing a prefix are not independent"
+            )
+    return problems
+
+
 # ── house-rules 6, 7, 10, 12 as FIELD checks ──────────────────────────────────
 # These four were stated in house-rules.md and enforced by nothing. They describe what a
 # model must DO during a turn, which no scanner can observe. Restated as properties of the
@@ -327,6 +377,22 @@ def controls():
                             "runId": "r", "overrides": "p1", "reason": "accepted the risk"}]
     out.append(("C3 allows it once an override is logged", not check_probe_gate(ok_override, [{"ts": "2026-01-02T00:00:00Z"}])))
 
+    # --- fan-out independence: prove parallel work units are independent before launch ---
+    fo = lambda **kw: {"id": "fo1", "kind": "fanout", "ts": "2026-07-20T00:00:00Z", "runId": "r",
+                       "work_units": [{"name": "A", "paths": ["alpha/"]},
+                                      {"name": "B", "paths": ["beta/"]}],
+                       "independence": {"status": "discharged", "evidence": "disjoint trees; no shared state"},
+                       **kw}
+    out.append(("FAN-OUT accepts a discharged fan-out with disjoint paths (positive control)",
+                not check_fanout_independence([fo()])))
+    out.append(("FAN-OUT passes a single-unit fanout (< 2 units is not a fan-out)",
+                not check_fanout_independence([fo(work_units=[{"name": "A", "paths": ["alpha/"]}])])))
+    out.append(("FAN-OUT rejects independence asserted-not-discharged",
+                bool(check_fanout_independence([fo(independence={"status": "asserted", "evidence": "assumed independent"})]))))
+    out.append(("FAN-OUT rejects a discharged claim whose paths overlap",
+                bool(check_fanout_independence([fo(work_units=[{"name": "A", "paths": ["shared/"]},
+                                                               {"name": "B", "paths": ["shared/sub"]}])]))))
+
     # --- house-rules 6, 7, 10, 12 ---
     def v(**kw):
         base = {"id": "vX", "kind": "verdict", "ts": "2026-07-20T00:00:00Z", "runId": "r",
@@ -404,6 +470,7 @@ def main():
         ("C1 verdict cites a real IntentCard", check_verdict_cites_intent(rows)),
         ("C2 no orphan drift flags", check_no_orphan_drift(rows)),
         ("C3 failed probe blocks later runs", check_probe_gate(rows, runs)),
+        ("FAN-OUT independence discharged + paths disjoint before parallel launch", check_fanout_independence(rows)),
         ("HR-7 every detector quotes a signal", check_rule7_signal(rows)),
         ("HR-10 no leaked reasoning in a verdict", check_rule10_unleaked(rows)),
         ("HR-12 grader is not the subject", check_rule12_not_self_graded(rows)),

@@ -53,8 +53,8 @@ BASE = control_results(load())
 # Every check function that controls() exercises. A checker absent from this list is a
 # checker whose controls nothing verifies, so the list itself is checked below.
 TARGETS = ["check_schema", "check_verdict_cites_intent", "check_no_orphan_drift", "check_probe_gate",
-           "check_rule7_signal", "check_rule10_unleaked", "check_rule12_not_self_graded",
-           "check_rule6_reversibility", "check_rat"]
+           "check_fanout_independence", "check_rule7_signal", "check_rule10_unleaked",
+           "check_rule12_not_self_graded", "check_rule6_reversibility", "check_rat"]
 
 print("== mutation test: break each checker, confirm its controls notice ==\n")
 print(f"  baseline: {sum(BASE.values())}/{len(BASE)} controls firing\n")
