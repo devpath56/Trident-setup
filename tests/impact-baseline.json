@@ -1,6 +1,6 @@
 {
   "audit_rate": 1.0,
-  "enforcement_gaps": 0,
+  "enforcement_gaps": 1,
   "escapes": 0,
   "exchange_gaps": 0,
   "prevention_integrity": null,
