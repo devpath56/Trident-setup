@@ -112,12 +112,14 @@ ${anticipated.map((f) => line(`${f.id}: ${f.title}`)).join('\n')}` : ''}
 
 ## Your output
 Nested bullets and a table only, no prose paragraphs (house-rule 16).
-- a table: | detector | PASS/FAIL | signal_seen |
+- a table: | detector | PASS/FAIL | signal_seen | span_ref |
+- on every FAIL, put the Spans entry that produced the signal in span_ref (the exact failing span);
+  a pass may leave it blank
 - a ruling on every DriftFlag above, by id
 - then one line: APPROVED or REJECTED, with a one-line reason
 
 Then append your Verdict to prongs/prongs.jsonl as one JSON line:
-{"id":"v-<short>","kind":"verdict","ts":"<iso>","runId":"${runId}","phase":"audit","intentCardId":"${intent.id}","resolves":[${drifts.map((d) => `"${d.id}"`).join(',')}],"detectors":[{"detector_id":"...","result":"pass|fail","signal_seen":"..."}],"grader_model":"sonnet","subject_model":"opus","irreversible":[]}
+{"id":"v-<short>","kind":"verdict","ts":"<iso>","runId":"${runId}","phase":"audit","intentCardId":"${intent.id}","resolves":[${drifts.map((d) => `"${d.id}"`).join(',')}],"detectors":[{"detector_id":"...","result":"pass|fail","signal_seen":"...","span_ref":"<span id on a fail>"}],"grader_model":"sonnet","subject_model":"opus","irreversible":[]}
 
 The \`phase\` field is REQUIRED: the audit is its own phase and must be opened by its own RAT.
 Before you rule, confirm a RATVerdict for phase "audit" of this run exists (run
