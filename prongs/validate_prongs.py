@@ -686,6 +686,38 @@ def check_claim_has_span(spans, kind="verdict"):
     return []
 
 
+PRIOR_ART_FROM = "2026-07-21T00:00:00Z"
+def check_prior_art(rows):
+    """PD-015 prior-art gate. A ratverdict OPENS a build (house-rule 0). A build dated >= cutoff must
+    record `prior_art.reuse` — the in-repo reuse-scan result — so a phase cannot open without first
+    asking 'does this capability already exist here?' (the buy-vs-build finding, generalized to
+    reuse-first). Forward-only: existing ratverdicts are grandfathered, never retro-failed."""
+    out = []
+    for r in [x for x in rows if x.get("kind") == "ratverdict" and x.get("ts", "") >= PRIOR_ART_FROM]:
+        pa = r.get("prior_art") or {}
+        if not str(pa.get("reuse") or "").strip():
+            out.append(f"ratverdict {r.get('id')}: no prior_art.reuse. A build must record the in-repo "
+                       "reuse scan (does this already exist?) before the phase opens (prior-art gate, PD-015)")
+    return out
+
+
+_DESIGN_KINDS = {"ratverdict", "intent", "assumptions"}
+def check_design_prong_no_execution(spans, kind="ratverdict"):
+    """PD-016 capability separation. A design/reasoning prong (ratverdict/intent/assumptions) must
+    SPECIFY a probe, not RUN it — the orchestrator executes. Execution spans (Bash/shell) in its
+    transcript mean the prong ran the probe itself: that is the 82k-forgery-in-a-prong leak, where a
+    reasoning agent burned tokens doing work a 2k orchestrator bash call should own. Reuses spans.mjs
+    output; scoped to design kinds so build prongs (verdict) that legitimately execute are exempt."""
+    if kind not in _DESIGN_KINDS:
+        return []
+    execs = [s.get("span") for s in (spans or [])
+             if str(s.get("span", "")).lower().startswith(("bash", "shell"))]
+    if execs:
+        return [f"a {kind} design prong has execution spans {execs}: it RAN a probe instead of "
+                "specifying it. Design prongs are read-only; the orchestrator executes (PD-016)"]
+    return []
+
+
 # ── negative controls ─────────────────────────────────────────────────────────
 def controls():
     out = []
@@ -965,6 +997,27 @@ def controls():
                 not check_claim_has_span([_root, _ok], "verdict")))
     out.append(("PD-008 EXEMPTS a reasoning artifact (intent, root-only spans) — no false-positive on Simba/Auditor verdicts",
                 not check_claim_has_span([_root], "intent")))
+
+    # PD-015 prior-art gate
+    _rat_old = {"kind": "ratverdict", "id": "rv-old", "ts": "2026-07-20T00:00:00Z"}
+    _rat_ok = {"kind": "ratverdict", "id": "rv-ok", "ts": "2026-07-22T00:00:00Z",
+               "prior_art": {"reuse": "grepped repo: no existing capability, building new"}}
+    _rat_bad = {"kind": "ratverdict", "id": "rv-bad", "ts": "2026-07-22T00:00:00Z"}
+    out.append(("PD-015 FIRES when a post-cutoff ratverdict records no prior_art.reuse (control fired)",
+                bool(check_prior_art([_rat_bad]))))
+    out.append(("PD-015 passes a ratverdict that records the in-repo reuse scan (positive control)",
+                not check_prior_art([_rat_ok])))
+    out.append(("PD-015 does NOT retro-fail a pre-cutoff ratverdict (forward-gate only)",
+                not check_prior_art([_rat_old])))
+
+    # PD-016 capability separation (design prong must not execute)
+    _bash_span = {"span": "Bash#1", "role": "ok", "status": "OK"}
+    out.append(("PD-016 FIRES when a design prong (ratverdict) has an execution (Bash) span (control fired)",
+                bool(check_design_prong_no_execution([_root, _bash_span], "ratverdict"))))
+    out.append(("PD-016 passes a design prong with only root/read spans (positive control)",
+                not check_design_prong_no_execution([_root, _ok], "ratverdict")))
+    out.append(("PD-016 EXEMPTS a build prong (verdict) that legitimately executes",
+                not check_design_prong_no_execution([_root, _bash_span], "verdict")))
     return out
 
 
@@ -991,6 +1044,7 @@ def main():
         ("HR-12 grader is not the subject", check_rule12_not_self_graded(rows)),
         ("HR-6 irreversible actions are approved", check_rule6_reversibility(rows)),
         ("HR-0 RAT opens each phase before any build", check_rat(rows)),
+        ("PRIOR-ART build records the in-repo reuse scan before opening (PD-015)", check_prior_art(rows)),
         ("RCA on-fail diagnosis is a fail-closed proposal grounded in a real failing verdict", check_rca(rows)),
     ]:
         if probs:

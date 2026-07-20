@@ -59,6 +59,18 @@ reasoning (PD-006).
    - **Enforced deterministically:** `validate_prongs.py` HR-0 rejects any `probe` row with no
      `ratverdict` before it in the same run. Nothing can be built or probed before its RAT.
 
+**Prior-art & capability separation (PD-015 / PD-016) — the two token-leak fixes:**
+- **Reuse-first (PD-015):** before a *build* RAT opens, run an in-repo reuse scan (`grep` for the
+  capability) and record the result on the RATVerdict as `prior_art.reuse` — the order is
+  **reuse > buy > build**. `validate_prongs.py check_prior_art` forward-gates: a post-cutoff
+  `ratverdict` with no `prior_art.reuse` fails. Buy-search is triage-gated — reach for it only when
+  reuse finds nothing *and* the build is non-trivial.
+- **Design prongs are read-only (PD-016):** Simba/Auditor design artifacts (`ratverdict` / `intent` /
+  `assumptions`) SPECIFY a probe; the orchestrator (or a build prong) EXECUTES it. Spawn design
+  prongs **without Bash**. `validate_prongs.py check_design_prong_no_execution` backstops: a design
+  artifact whose spans include an execution (Bash) span fails — a reasoning agent must not spend 82k
+  running a probe a 2k orchestrator bash call should own.
+
 **Every phase opens with its own RAT, not just Phase 0.** Phase 1 (build), Phase 2 (audit), and
 each correction round (Phase 3) each run rat.mjs first with their own `--phase`: the same three
 first-principles adversarial questions (should I build this? what is the riskiest assumption I am
