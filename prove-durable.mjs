@@ -97,7 +97,11 @@ process.on('SIGINT', () => { cleanup(); process.exit(130); });
 
 const results = [];
 
-// modified files: revert to baseline, expect the suite to notice.
+// modified files: revert to baseline, expect the suite to notice. A file that was ADDED since
+// BASE has no baseline version, so `git checkout BASE -- f` errors ("pathspec did not match")
+// and silently no-ops, which used to report the file as UNGATED even when a gate would catch
+// its removal. Detect that case and REMOVE the file instead (the new-file probe), so an
+// older --base gives the same honest answer as --base HEAD.
 for (const f of modified) {
   const abs = path.join(REPO, f);
   if (!fs.existsSync(abs)) continue; // deleted file; skip
@@ -106,11 +110,18 @@ for (const f of modified) {
   const undo = () => fs.copyFileSync(keep, abs);
   restores.push(undo);
 
-  git('checkout', BASE, '--', f);           // F back to baseline, other changes intact
-  process.stdout.write(`  revert ${f} ... `);
+  const existedAtBase = git('cat-file', '-e', `${BASE}:${f}`).status === 0;
+  if (existedAtBase) {
+    git('checkout', BASE, '--', f);          // F back to baseline, other changes intact
+    process.stdout.write(`  revert ${f} ... `);
+  } else {
+    fs.rmSync(abs);                          // added since BASE: no baseline, so remove it
+    process.stdout.write(`  remove ${f} (new since base) ... `);
+  }
   const r = runCheck();
   console.log(r.green ? 'still GREEN  (UNGATED)' : `RED  (gated)`);
-  results.push({ file: f, kind: 'modified', durable: !r.green });
+  results.push({ file: f, kind: existedAtBase ? 'modified' : 'new', durable: !r.green,
+                 isCode: /\.(mjs|js|py|sh|ts)$/.test(f) });
 
   undo();                                    // restore my change
   restores.splice(restores.indexOf(undo), 1);
