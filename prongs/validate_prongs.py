@@ -27,6 +27,7 @@ is not a gate.
 Run:  python3 prongs/validate_prongs.py
 """
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -94,6 +95,57 @@ def check_schema(rows):
     return problems
 
 
+# ── C0-DEP: the schema still DECLARES the kinds/fields the validators CONSUME ──
+# check_fanout_independence reads `fanout` rows; check_deferred_assumption_gate reads the
+# `phase` field off `assumptions` rows. Those gates only constrain real rows because check_schema
+# rejects a row of a declared kind that is missing a declared-required field. Revert schema.json —
+# drop `fanout` from enum.kind, or drop `phase` from the assumptions required list — and check_schema
+# stops rejecting a phase-less assumptions row or an unknown fanout kind, so the downstream gate goes
+# silently toothless while every green tick still prints. This check pins the dependency: the schema
+# must keep declaring what the code consumes. It reads the LIVE schema.json (loaded into SCHEMA), so
+# reverting the file to a pre-`phase` HEAD fails HERE, which is what makes the schema edit durable.
+#
+# SCOPE HONESTY: this gates the DECLARATION, not the rows. It proves schema.json still names the
+# kinds/fields the validators depend on; it does not prove any row uses them. That is coverage, not
+# correctness — the same coarse-and-forward stance as the other gates.
+SCHEMA_DEPENDENCIES = {
+    # enum.kind must contain every kind a validator dispatches on
+    "kinds": ["assumptions", "fanout"],
+    # kinds.<name>.required must contain every field a validator reads off that row
+    "required": {
+        "assumptions": ["phase", "assumptions"],
+        "fanout": ["work_units", "independence"],
+        "ratverdict": ["phase"],
+    },
+}
+
+
+def check_schema_kinds(rows=None, schema=None):
+    """The schema must keep declaring the kinds and required fields the validators consume.
+    `rows` is unused (kept for the check_* signature); pass `schema` to exercise a specific schema
+    object, else the live schema.json (SCHEMA) is checked. Reverting schema.json so it drops
+    `fanout` from enum.kind or `phase` from the assumptions required list makes this fire."""
+    s = SCHEMA if schema is None else schema
+    problems = []
+    enum_kinds = (s.get("enum") or {}).get("kind") or []
+    for k in SCHEMA_DEPENDENCIES["kinds"]:
+        if k not in enum_kinds:
+            problems.append(
+                f"schema enum.kind is missing {k!r}: a validator dispatches on it, so dropping it "
+                f"silently un-gates {k} rows (check_schema would stop rejecting an unknown kind)"
+            )
+    kinds = s.get("kinds") or {}
+    for kind, fields in SCHEMA_DEPENDENCIES["required"].items():
+        req = (kinds.get(kind) or {}).get("required") or []
+        for f in fields:
+            if f not in req:
+                problems.append(
+                    f"schema kinds.{kind}.required is missing {f!r}: a validator reads this field, "
+                    f"so check_schema must require it or the {kind} gate is toothless"
+                )
+    return problems
+
+
 # ── C1: a verdict must name an IntentCard that exists ─────────────────────────
 def check_verdict_cites_intent(rows):
     intents = {r["id"] for r in rows if r.get("kind") == "intent"}
@@ -106,6 +158,88 @@ def check_verdict_cites_intent(rows):
             problems.append(f"verdict {r.get('id')}: no intentCardId. The Auditor cannot prove it read one")
         elif cited not in intents:
             problems.append(f"verdict {r.get('id')}: cites intentCardId {cited!r} which does not exist")
+    return problems
+
+
+# ── C1b: a verdict must cite the CF detectors it consulted from the failures-log SSOT ──
+# The Auditor is DESIGNED to read failures/failures.jsonl, predict which CF modes this task is
+# prone to (its AnticipatedFailures primer), and emit a per-detector Verdict =
+# {detector_id, result, signal_seen}[] where each detector_id names a CF from the SSOT. Nothing
+# PROVED it did: the pre-convention verdicts (v-30e3d80e .. v-c73addfb) carry free-text
+# detector_ids ("gate-runs-clean", "intent_gate.py execution") that reference no CF at all, so a
+# verdict could be emitted having never opened the SSOT. This gate makes the consultation
+# checkable: a verdict must cite >= 1 CF id, and EVERY CF id it cites must EXIST in
+# failures.jsonl (cross-referenced live). That deterministically forbids the two failure shapes:
+# a verdict that consulted nothing (no CF cited) and a phantom citation (a CF id that isn't real).
+#
+# SCOPE HONESTY (a green tick must not imply more than it means): this enforces only the
+# deterministically-provable part — non-empty detectors, >= 1 real CF cited, no phantom ids. It
+# does NOT judge whether the cited CFs are the RELEVANT ones for this task; picking the right
+# anticipated failures is the Auditor's judgment, not a mechanizable property. Like C1 and HR-7
+# this closes the accident (a verdict that never touched the SSOT), not the lie (citing a real
+# but irrelevant CF). It is detection, not root-cause, and house-rule 1 ranks it accordingly.
+#
+# FORWARD-GATE: verdicts written before this convention existed are not retro-failed. This mirrors
+# check_rule6_reversibility's ts-cutoff mechanism exactly. The cutoff sits at the next day-boundary
+# after the last pre-convention verdict (v-c73addfb, 2026-07-20T00:53Z) — the same date-boundary
+# style as PHASE_FROM — so every existing verdict, and the concurrent doctrine run's 2026-07-20
+# verdicts, are grandfathered and the suite stays green. "Gates apply forward" as code, not a note.
+DETECTORS_FROM = "2026-07-21T00:00:00Z"
+
+
+def _known_cf_ids():
+    """The CF ids that actually exist in the failures-log SSOT. Loaded live so a citation is
+    cross-referenced against the real file rather than a hardcoded list. Resolved from this
+    file's location, so it is robust to the caller's cwd. A missing file yields an empty set,
+    which fails closed: every citation then reads as phantom."""
+    ids = set()
+    failures = HERE.parent / "failures" / "failures.jsonl"
+    if failures.exists():
+        for line in failures.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                cid = json.loads(line).get("id")
+            except json.JSONDecodeError:
+                continue
+            if cid:
+                ids.add(cid)
+    return ids
+
+
+def _cited_cf_ids(detectors):
+    """The CF ids a verdict cites: every CF-### token appearing in a detector's detector_id."""
+    ids = []
+    for d in detectors or []:
+        ids += re.findall(r"CF-\d{3,}", str(d.get("detector_id", "")))
+    return ids
+
+
+def check_verdict_cites_detectors(rows):
+    known = _known_cf_ids()
+    problems = []
+    for v in [r for r in rows if r.get("kind") == "verdict" and r.get("ts", "") >= DETECTORS_FROM]:
+        dets = v.get("detectors")
+        if _blank(dets):
+            problems.append(
+                f"verdict {v.get('id')}: empty detectors. The Auditor cannot prove it consulted "
+                f"the failures-log SSOT (C1b)"
+            )
+            continue
+        cited = _cited_cf_ids(dets)
+        if not cited:
+            problems.append(
+                f"verdict {v.get('id')}: detectors cite no CF id from the failures log. A verdict "
+                f"must name the CF detector(s) it evaluated, proving it read the SSOT (C1b)"
+            )
+            continue
+        phantom = sorted({c for c in cited if c not in known})
+        if phantom:
+            problems.append(
+                f"verdict {v.get('id')}: cites CF id(s) {phantom} absent from failures/failures.jsonl. "
+                f"A phantom citation is a claim to have consulted a detector that does not exist (C1b)"
+            )
     return problems
 
 
@@ -189,6 +323,63 @@ def check_fanout_independence(rows):
             problems.append(
                 f"fanout {r.get('id')}: claimed discharged but paths overlap: {overlaps}. "
                 f"Work units sharing a prefix are not independent"
+            )
+    return problems
+
+
+# ── deferred high-kill assumption gate: an unresolved risky assumption cannot be ──
+#    carried silently into the NEXT phase ────────────────────────────────────────
+# CF-068's shape: work proceeded on a deferred, unprobed assumption ('the proxy equals the
+# source') that later proved false, so the whole build could have rewarded invented content.
+# Phase 0 probes exactly ONE riskiest assumption — the cheapest falsifying experiment targets
+# it; every other assumption is deferred. A deferred assumption is only safe if it is LOW-kill,
+# or it was explicitly resolved: probed later, or accepted through a logged override. A deferred
+# HIGH-kill assumption (kill_power >= K) carried into the next phase with no resolution is the
+# accident this gate stops. It is COARSE and FORWARD, like C1-C3 and the fan-out gate: it gates
+# at PHASE granularity (the deferred high-kill assumption blocks the NEXT phase from starting),
+# not per-work-item — that finer 'blocks:[] edge' version was rejected. And it gates the ARTIFACT:
+# whether the row honestly reported kill_power, not whether the number is truly right, is
+# detection, not root-cause. status resolves the assumption: 'probed' == it WAS the phase's probed
+# riskiest; 'overridden' == deferred but explicitly accepted; anything else == deferred-unresolved.
+KILL_THRESHOLD = 4  # kill_power >= K counts as "high-kill". Default K=4.
+
+
+def _kill_power(entry):
+    try:
+        return int(entry.get("kill_power"))
+    except (TypeError, ValueError):
+        return None
+
+
+def check_deferred_assumption_gate(rows):
+    problems = []
+    for a in [r for r in rows if r.get("kind") == "assumptions"]:
+        phase = a.get("phase")
+        run = a.get("runId")
+        ts = a.get("ts", "")
+        # Did a LATER phase start in this run? A prong row in a DIFFERENT, non-blank phase,
+        # timestamped after these assumptions were written, is the next phase beginning.
+        next_phase = [
+            r for r in rows
+            if r.get("runId") == run and r.get("ts", "") > ts
+            and not _blank(r.get("phase")) and r.get("phase") != phase
+        ]
+        if not next_phase:
+            continue  # still in the same phase; nothing has been carried forward yet
+        nxt = min(next_phase, key=lambda r: r.get("ts", ""))
+        for entry in a.get("assumptions") or []:
+            kp = _kill_power(entry)
+            if kp is None or kp < KILL_THRESHOLD:
+                continue  # unranked or low-kill: a deferred low-kill assumption is safe
+            status = str(entry.get("status", "")).strip().lower()
+            if status in ("probed", "overridden"):
+                continue  # resolved: the probed riskiest, or explicitly overridden
+            problems.append(
+                f"assumptions {a.get('id')} (phase {phase!r}): high-kill assumption "
+                f"{entry.get('claim')!r} (kill_power {kp}) is deferred and unresolved "
+                f"(status {status or 'none'!r}: not the probed riskiest, no override), yet phase "
+                f"{nxt.get('phase')!r} started at {nxt.get('ts','')[:16]}. A deferred high-kill "
+                f"assumption blocks the next phase from starting (CF-068, house-rule 0)"
             )
     return problems
 
@@ -356,6 +547,27 @@ def controls():
     out.append(("C0 rejects an empty dict in a required field (audit d-c5c84966)",
                 bool(check_schema([{**ok, "scope": {}}]))))
 
+    # --- C0-DEP: the schema still declares the kinds/fields the validators consume ---
+    # Each control injects a schema object so a rejection branch can be isolated without touching
+    # the live schema.json. sk() returns a FRESH fully-conformant schema each call, so a negative
+    # control can drop exactly one dependency. The 'phase' branch is the field this session added,
+    # so it is the branch that fires when schema.json is reverted to HEAD.
+    sk = lambda: {"enum": {"kind": ["assumptions", "fanout"]},
+                  "kinds": {"assumptions": {"required": ["phase", "assumptions"]},
+                            "fanout": {"required": ["work_units", "independence"]},
+                            "ratverdict": {"required": ["phase"]}}}
+    out.append(("C0-DEP accepts a schema declaring every consumed kind+field (positive control)",
+                not check_schema_kinds(schema=sk())))
+    _no_fanout = sk(); _no_fanout["enum"]["kind"].remove("fanout")
+    out.append(("C0-DEP rejects a schema whose enum.kind drops 'fanout'",
+                bool(check_schema_kinds(schema=_no_fanout))))
+    _no_phase = sk(); _no_phase["kinds"]["assumptions"]["required"].remove("phase")
+    out.append(("C0-DEP rejects a schema whose assumptions.required drops 'phase' (the durable field)",
+                bool(check_schema_kinds(schema=_no_phase))))
+    _no_indep = sk(); _no_indep["kinds"]["fanout"]["required"].remove("independence")
+    out.append(("C0-DEP rejects a schema whose fanout.required drops 'independence'",
+                bool(check_schema_kinds(schema=_no_indep))))
+
     no_cite = [{"id": "v1", "kind": "verdict", "ts": "t", "runId": "r", "detectors": []}]
     out.append(("C1 rejects a verdict with no intentCardId", bool(check_verdict_cites_intent(no_cite))))
 
@@ -364,6 +576,30 @@ def controls():
              {"id": "v1", "kind": "verdict", "ts": "t", "runId": "r", "intentCardId": "NOPE",
               "detectors": []}]
     out.append(("C1 rejects a verdict citing a nonexistent IntentCard", bool(check_verdict_cites_intent(ghost))))
+
+    # --- C1b: a verdict must cite the CF detectors it consulted from the failures-log SSOT ---
+    # real_cf is derived from the live SSOT so the positive control cites an id that genuinely
+    # exists; the negatives cite empty/free-text/phantom to prove each rejection branch fires.
+    real_cf = next(iter(sorted(_known_cf_ids())), "CF-010")
+    cd = lambda **kw: {"id": "vcd", "kind": "verdict", "ts": "2026-07-21T00:00:00Z", "runId": "r",
+                       "intentCardId": "i1",
+                       "detectors": [{"detector_id": real_cf, "result": "pass",
+                                      "signal_seen": "observed: the cited CF detector was evaluated"}],
+                       **kw}
+    out.append(("C1b accepts a post-cutoff verdict citing a real CF id (positive control)",
+                not check_verdict_cites_detectors([cd()])))
+    out.append(("C1b rejects a post-cutoff verdict with empty detectors",
+                bool(check_verdict_cites_detectors([cd(detectors=[])]))))
+    out.append(("C1b rejects a post-cutoff verdict that cites NO CF id (free-text detector only)",
+                bool(check_verdict_cites_detectors([cd(detectors=[{"detector_id": "gate-runs-clean",
+                                                                   "result": "pass", "signal_seen": "x"}])]))))
+    out.append(("C1b rejects a phantom CF citation (a CF id not in the SSOT)",
+                bool(check_verdict_cites_detectors([cd(detectors=[{"detector_id": "CF-99999",
+                                                                   "result": "pass", "signal_seen": "x"}])]))))
+    out.append(("C1b does NOT retro-fail a verdict written before the CF-citation convention (forward-gate)",
+                not check_verdict_cites_detectors([cd(ts="2026-07-20T00:00:00Z",
+                                                      detectors=[{"detector_id": "gate-runs-clean",
+                                                                  "result": "pass", "signal_seen": "x"}])])))
 
     orphan = [{"id": "d1", "kind": "drift", "ts": "t", "runId": "r",
                "determination": "DriftFlag", "drifted_from": "goal"}]
@@ -392,6 +628,31 @@ def controls():
     out.append(("FAN-OUT rejects a discharged claim whose paths overlap",
                 bool(check_fanout_independence([fo(work_units=[{"name": "A", "paths": ["shared/"]},
                                                                {"name": "B", "paths": ["shared/sub"]}])]))))
+
+    # --- deferred high-kill assumption gate (CF-068): an unresolved risky assumption cannot
+    #     be carried silently into the next phase ---
+    da = lambda **kw: {"id": "asmX", "kind": "assumptions", "ts": "2026-07-20T00:00:00Z",
+                       "runId": "rda", "phase": "explore",
+                       "assumptions": [{"claim": "the proxy approximates the source",
+                                        "kill_power": 5, "uncertainty": "high", "status": "deferred"}],
+                       **kw}
+    next_phase_row = {"id": "ratNext", "kind": "ratverdict", "ts": "2026-07-20T02:00:00Z",
+                      "runId": "rda", "phase": "build", "riskiest_assumption": "x" * 15,
+                      "cheapest_probe": "y" * 15, "gate": "hard", "push_decision": "proceed"}
+
+    out.append(("GATE-ASM rejects a deferred high-kill assumption once the next phase starts",
+                bool(check_deferred_assumption_gate([da(), next_phase_row]))))
+    out.append(("GATE-ASM passes when that high-kill assumption WAS the probed riskiest (positive control)",
+                not check_deferred_assumption_gate(
+                    [da(assumptions=[{"claim": "c", "kill_power": 5, "status": "probed"}]), next_phase_row])))
+    out.append(("GATE-ASM passes when the deferred assumption was explicitly overridden",
+                not check_deferred_assumption_gate(
+                    [da(assumptions=[{"claim": "c", "kill_power": 5, "status": "overridden"}]), next_phase_row])))
+    out.append(("GATE-ASM passes a deferred LOW-kill assumption (below the threshold)",
+                not check_deferred_assumption_gate(
+                    [da(assumptions=[{"claim": "c", "kill_power": 1, "status": "deferred"}]), next_phase_row])))
+    out.append(("GATE-ASM does not fire while still in the SAME phase (no next phase started)",
+                not check_deferred_assumption_gate([da()])))
 
     # --- house-rules 6, 7, 10, 12 ---
     def v(**kw):
@@ -467,10 +728,13 @@ def main():
 
     for name, probs in [
         ("C0 schema + ids", check_schema(rows)),
+        ("C0-DEP schema still declares the kinds/fields the validators consume", check_schema_kinds(rows)),
         ("C1 verdict cites a real IntentCard", check_verdict_cites_intent(rows)),
+        ("C1b verdict cites real CF detectors from the failures-log SSOT", check_verdict_cites_detectors(rows)),
         ("C2 no orphan drift flags", check_no_orphan_drift(rows)),
         ("C3 failed probe blocks later runs", check_probe_gate(rows, runs)),
         ("FAN-OUT independence discharged + paths disjoint before parallel launch", check_fanout_independence(rows)),
+        ("GATE-ASM deferred high-kill assumption blocks the next phase (CF-068)", check_deferred_assumption_gate(rows)),
         ("HR-7 every detector quotes a signal", check_rule7_signal(rows)),
         ("HR-10 no leaked reasoning in a verdict", check_rule10_unleaked(rows)),
         ("HR-12 grader is not the subject", check_rule12_not_self_graded(rows)),

@@ -126,6 +126,22 @@ else:
             print(f"    {_l.strip()}")
     fails.append("mutation test: surviving mutant")
 
+# --- census durability controls (HARD; reverting census.py flips one) ---
+# The census's two audited holes were fixed by named functions (is_genuine_run, is_consumed,
+# real, transport_verdict). Those fixes must be DURABLE: reverting tests/census.py to HEAD has
+# to fail THIS suite. The guard therefore lives in a SEPARATE file, tests/census_durability.py,
+# which does not revert with census.py and drives census only as a SUBPROCESS — never `import
+# census`, because a reverted census sys.exits at module load and would short-circuit this whole
+# suite to a silent pass (the exact hole prove-durable found). Running the durability file as a
+# subprocess isolates that: a reverted/empty census makes census_durability exit nonzero, which
+# fails a check here. FIX #1 flips DURABLE-GENUINE-*/-LEDGER; FIX #2 flips DURABLE-CONTROLS.
+_cd = _run("census durability controls (HARD; reverting census.py flips one)",
+           [sys.executable, os.path.join(_here, "census_durability.py")], _root)
+for _l in _cd.stdout.splitlines():
+    _s = _l.strip()
+    if _s.startswith(("ok", "FAIL")) and "DURABLE-" in _s:
+        print("    " + _s)
+
 # --- coverage, not correctness ---
 # Everything above proves the gates work ON FIXTURES. It cannot prove they were ever applied
 # to real work, and those come apart: design-loop had 6 runs showing a green gate where the

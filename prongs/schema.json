@@ -6,8 +6,8 @@
       "notes": "Written by Simba at step 0. intent_source must be 'asked'; 'inferred' is not a valid gate input (house-rule 15)."
     },
     "assumptions": {
-      "required": ["id", "kind", "ts", "runId", "assumptions"],
-      "notes": "Written by the Do-er in Phase 0. Each assumption carries kill_power and uncertainty."
+      "required": ["id", "kind", "ts", "runId", "phase", "assumptions"],
+      "notes": "Written by the Do-er at the START of a phase. `phase` is the phase these assumptions belong to. `assumptions` is a list of entries, each {claim, kill_power (int, >=0), uncertainty, status}. status is one of 'probed' (this was the phase's probed riskiest, resolved by the cheapest falsifying experiment), 'overridden' (deferred but explicitly accepted with a logged reason), or 'deferred' (neither probed nor overridden). check_deferred_assumption_gate CONSUMES this: a 'deferred' entry with kill_power >= K (default 4) that is carried into the NEXT phase with no resolution blocks that next phase from starting (CF-068). Adding `phase` is backward-compatible: zero assumptions rows predate it."
     },
     "ratverdict": {
       "required": ["id", "kind", "ts", "runId", "phase", "riskiest_assumption", "cheapest_probe", "gate", "push_decision"],
