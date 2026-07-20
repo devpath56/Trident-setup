@@ -1,4 +1,12 @@
-# Raw, unsanitized incident logs — personal specifics stay local, never committed.
+# Raw, unsanitized incident logs. Personal specifics stay local, never committed.
 failures.local.jsonl
 *.local.jsonl
 failures/*.local.jsonl
+
+# OS cruft and transient hook logs
+.DS_Store
+*.log
+**/.claude/stop_hook_fired.log
+
+# vendored deps in prototypes
+**/node_modules/

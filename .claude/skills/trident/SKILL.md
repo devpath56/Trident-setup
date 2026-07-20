@@ -31,14 +31,40 @@ carry the real decorrelation. Simba stays independent of the build by reading Ou
 reasoning (PD-006).
 
 **Phase 0 — RAT gate**
-1. Spawn **Simba** (`agentType` per `../simba/SKILL.md`): input = the user's problem + *their* messages only.
-   → returns `IntentCard` {goal, must_haves, forbid, pinned_feedback, intent_riskiest}.
+0. **Simba ASKS the user their intent — first, always, before anything else** (house-rule 15, PD-007).
+   - Spawn **Simba** in *ask mode*: it reads their messages only to find the **gaps**, then returns
+     **2–4 questions** — and **question 1 is always "what's the scope for this session?"**, pulling
+     both `in_scope` and `out_of_scope`. Every other question is a decision that changes what gets built.
+   - Put those questions to the user and **wait**. Do not spawn the Do-er, do not rank assumptions,
+     do not build. An unanswered intent question is a hard block.
+   - Reading an inferred goal back for confirmation is **not** asking — it anchors them to the guess.
+1. Spawn **Simba** again with the user's *answers* + their messages as corroboration.
+   → returns `IntentCard` {intent_source, goal, must_haves, forbid, pinned_feedback, intent_riskiest}.
+   - `intent_source` must be `asked`. If it is `inferred`, the Auditor **fails closed** → return to step 0.
+   - **Exception, narrowly scoped** (house-rule 15) — an instruction to skip the ask counts only if it:
+     (a) names *skipping the intent question* specifically — a generic "go ahead", "ok", or "do it" is
+     **not** a waiver and must never be read as one; (b) is scoped to the decision at hand, **never** a
+     standing waiver for the session; and (c) is re-confirmed when a materially new decision arises that
+     the original instruction did not cover. Record the instruction verbatim in `pinned_feedback`.
 2. Spawn **Do-er** (Opus): input = the task. → returns `AssumptionSet` — every capability/platform/feasibility
    assumption, each tagged {type, kill_power 1–5, uncertainty 1–5}. **It does not build yet.**
 3. Spawn **Auditor** (Sonnet 5): input = `AssumptionSet` + `IntentCard`. → returns `RATVerdict`
    {riskiest (max kill_power × uncertainty), probe (the smallest command/read that could prove it impossible), pass_criteria}.
-4. Run the probe (directly, or a scoped Do-er). Evaluate against `pass_criteria`.
+   - **Record it with `node prongs/rat.mjs --run <id> --phase <name> --push proceed|hold --riskiest "..." --probe "..."`.**
+     The RAT is the phase-opener: a phase has started only once its RATVerdict exists (there is no
+     separate "phase" object to gate, the RAT IS the boundary). rat.mjs refuses placeholders.
+4. Run the probe (directly, or a scoped Do-er). Evaluate against `pass_criteria`. Log its result as a `probe` row.
 5. **GATE:** fail → **STOP**, report to the user, `log failure`. pass → continue. *(Never skip this.)*
+   - **Enforced deterministically:** `validate_prongs.py` HR-0 rejects any `probe` row with no
+     `ratverdict` before it in the same run. Nothing can be built or probed before its RAT.
+
+**Every phase opens with its own RAT, not just Phase 0.** Phase 1 (build), Phase 2 (audit), and
+each correction round (Phase 3) each run rat.mjs first with their own `--phase`: the same three
+first-principles adversarial questions (should I build this? what is the riskiest assumption I am
+missing? what is the cheapest probe to falsify it?) before a line of that phase is written.
+**Enforced:** every work artifact (a `probe` for Phase 0, a `verdict` for audit/correct) carries a
+`phase`, and `validate_prongs.py` HR-0 rejects any that has no RATVerdict for that same phase before
+it. A single Phase-0 RAT no longer covers the run. Forward-only: work predating the gate is exempt.
 
 **Phase 1 — Build**
 6. Spawn **Do-er** (Opus): input = task + `IntentCard` (honor must_haves / forbid / pinned_feedback).
@@ -91,7 +117,18 @@ repo in scope, `log failure` appends → Auditor-approves → commits + pushes t
 happened if it didn't (FL-cf046). `log decision` is the meta-scoped sibling — Trident's own design only,
 gated by `validate_decisions.py`.
 
+## Output shape (house-rule 16)
+Every Trident-authored surface — orchestrator reports, `IntentCard`, `AssumptionSet`, `RATVerdict`,
+`Verdict`, `DriftFlag` — is **nested bullets or tables only**.
+- No prose paragraphs, no essay narration, no scene-setting.
+- A field that needs explaining gets a **sub-bullet**, not a sentence of commentary.
+- Comparisons, per-detector results, and assumption rankings go in a **table**.
+- Why: prong outputs are artifacts that get diffed between loops; prose hides structure and lets an
+  unattributed claim ride along as if it were a finding.
+
 ## Hard guardrails (do not break)
+- **Ask intent before you infer it** — Simba owns step 0 of every new session (house-rule 15, PD-007).
+- **Nested bullets and tables only** in every prong output (house-rule 16).
 - No build, no deps — installs as a plain skills tree; orchestration uses subagents (Claude Code / VS Code).
 - No personal data or external paths in any committed record — re-scan before commit.
 - Deterministic detectors before any LLM-judge (FL-cf051). The judge (Sonnet 5) is never the Do-er (Opus).
