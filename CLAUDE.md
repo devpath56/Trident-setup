@@ -48,7 +48,7 @@ Add a guard **only from a real observed failure**, never a hypothetical:
 The suite only ever grows from real errors.
 
 ## Hard guardrails (do not break)
-- **No build, no deps.** Keep install trivial (a skills tree). Orchestration uses subagents — a Claude Code / VS Code capability; don't add machinery that assumes another surface.
+- **No build, no deps.** Keep install trivial (a skills tree). Orchestration uses subagents — a Claude Code / VS Code capability; don't add machinery that assumes another surface. **One deliberate exception:** a single dependency-free (`node:`-only) `Stop` hook (`prongs/thread-ledger.mjs`, wired in `.claude/settings.json`) that writes Simba's per-session thread ledger. The no-build/no-deps rule still holds — any hook must stay `node:`-only and be justified like this one.
 - **No personal data, no external paths in any committed record.** Re-scan before every commit —
   grep the working set for your home-dir prefix, private workspace names, and company names; block on any hit.
 - **Deterministic detectors before any LLM-judge.** The Auditor (Sonnet 5) is never the Do-er (Opus).

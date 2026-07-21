@@ -1,7 +1,10 @@
 # Install Trident
 
-Trident is a pure skill bundle — no build, no dependencies, no hooks. Install = make the
-`.claude/skills/` tree visible to your Claude surface.
+Trident is a near-pure skill bundle — no build, no dependencies. It ships **one** committed,
+dependency-free (`node:`-only) `Stop` hook — `prongs/thread-ledger.mjs`, which re-asserts Simba's
+per-session intent ledger (what happened to each request) on every stop, wired in
+`.claude/settings.json`. Install = make the `.claude/skills/` tree visible to your Claude surface;
+the hook activates once Claude Code loads `.claude/settings.json`.
 
 ## Claude Code (CLI / VS Code) — global skill
 Clone the repo and point Claude Code at its skills, or copy the bundle into your user skills dir:
