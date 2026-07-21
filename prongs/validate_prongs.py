@@ -689,17 +689,48 @@ def check_claim_has_span(spans, kind="verdict"):
 
 
 PRIOR_ART_FROM = "2026-07-21T00:00:00Z"
+_AUTH_LEX = None
+def _auth_lexicon():
+    """The CF-075 lexicons, loaded ONCE from the repo-root authority-lexicon.json — the same file
+    authority-guard.mjs reads, so the JS guard and this Python reuse gate share one SSOT and cannot
+    drift. Returns compiled (prestige, fit) where fit = general fit + engineering-reuse fit."""
+    global _AUTH_LEX
+    if _AUTH_LEX is None:
+        p = Path(__file__).resolve().parent.parent / "authority-lexicon.json"
+        lx = json.load(open(p))
+        rx = lambda arr: re.compile(r"\b(" + "|".join(arr) + r")\b", re.I)
+        _AUTH_LEX = (rx(lx["prestige"]), rx(lx["fit"] + lx.get("fit_reuse", [])))
+    return _AUTH_LEX
+
 def check_prior_art(rows):
-    """PD-015 prior-art gate. A ratverdict OPENS a build (house-rule 0). A build dated >= cutoff must
-    record `prior_art.reuse` — the in-repo reuse-scan result — so a phase cannot open without first
-    asking 'does this capability already exist here?' (the buy-vs-build finding, generalized to
-    reuse-first). Forward-only: existing ratverdicts are grandfathered, never retro-failed."""
+    """PD-015 prior-art gate + the CF-075 reuse-authority axis. A ratverdict OPENS a build
+    (house-rule 0). A build dated >= cutoff must record `prior_art.reuse` — the in-repo reuse-scan
+    result — so a phase cannot open without first asking 'does this capability already exist here?'
+    (the buy-vs-build finding, generalized to reuse-first). Forward-only: existing ratverdicts are
+    grandfathered, never retro-failed.
+
+    CF-075 wire: recording the scan is necessary but not sufficient. The PICK the scan lands on must
+    be ranked by FIT to this repo's job, not by breadth/prestige alone. A reuse justification that
+    invokes prestige ('the industry standard', 'most widely used', 'canonical') with ZERO fit axis
+    is authority-by-breadth — the exact error authority-guard.mjs gates for learning sources, here at
+    the build-vs-buy decision. Prestige is NOT banned (a battle-tested lib is a real signal); it is
+    only rejected when it stands ALONE, with no reason the pick fits THIS repo's job/constraints."""
     out = []
     for r in [x for x in rows if x.get("kind") == "ratverdict" and x.get("ts", "") >= PRIOR_ART_FROM]:
         pa = r.get("prior_art") or {}
-        if not str(pa.get("reuse") or "").strip():
+        reuse = str(pa.get("reuse") or "").strip()
+        if not reuse:
             out.append(f"ratverdict {r.get('id')}: no prior_art.reuse. A build must record the in-repo "
                        "reuse scan (does this already exist?) before the phase opens (prior-art gate, PD-015)")
+            continue
+        prestige, fit = _auth_lexicon()
+        m = prestige.search(reuse)
+        if m and not fit.search(reuse):
+            out.append(f"ratverdict {r.get('id')}: prior_art.reuse ranks the pick by prestige/breadth "
+                       f"('{m.group(0)}') with no fit-to-this-repo axis — authority-by-breadth (CF-075). "
+                       "A battle-tested/standard option is a real signal, but say why it fits THIS job "
+                       "(maintained, already a dependency, matches our stack, license/constraint) — not "
+                       "merely that it is the most widely used.")
     return out
 
 
@@ -1066,6 +1097,18 @@ def controls():
                 not check_prior_art([_rat_ok])))
     out.append(("PD-015 does NOT retro-fail a pre-cutoff ratverdict (forward-gate only)",
                 not check_prior_art([_rat_old])))
+    # CF-075 reuse-authority axis (inside PD-015): a prestige-ONLY reuse pick fails; a fit-justified
+    # reuse pick passes; a build-new scan passes (no prestige claim). Shares the authority-lexicon SSOT.
+    _rat_breadth = {"kind": "ratverdict", "id": "rv-breadth", "ts": "2026-07-22T00:00:00Z",
+                    "prior_art": {"reuse": "adopt it — the industry standard, most widely used option"}}
+    _rat_fit = {"kind": "ratverdict", "id": "rv-fit", "ts": "2026-07-22T00:00:00Z",
+                "prior_art": {"reuse": "reuse the standard lib: battle-tested AND already a dependency in our stack"}}
+    out.append(("CF-075 reuse gate FIRES on a prestige-only reuse pick with no fit axis (control fired)",
+                bool(check_prior_art([_rat_breadth]))))
+    out.append(("CF-075 reuse gate PASSES a reuse pick that names fit-to-this-repo, not just breadth",
+                not check_prior_art([_rat_fit])))
+    out.append(("CF-075 reuse gate PASSES a build-new scan (no prestige claim at all)",
+                not check_prior_art([_rat_ok])))
 
     # PD-016 capability separation (design prong must not execute)
     _bash_span = {"span": "Bash#1", "role": "ok", "status": "OK"}

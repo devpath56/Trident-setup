@@ -47,13 +47,16 @@ try { rec = JSON.parse(raw); } catch (e) { console.error(`not valid JSON: ${e.me
 
 const persona = JSON.parse(fs.readFileSync(path.join(HERE, 'authority-persona.json'), 'utf8'));
 
-// ── the lexicons ──────────────────────────────────────────────────────────────
-// PRESTIGE: ranking words that describe a source's reputation, not its fit to a reader.
-const PRESTIGE = /\b(most[- ]?cited|widely[- ](taught|used|adopted|read)|canonical|seminal|classic|the standard|industry[- ]standard|time[- ]?honou?red|oldest|longest[- ]standing|established|renowned|most[- ]popular|everyone[- ]uses|gold[- ]standard|definitive|foundational|the bible|prestigious)\b/i;
-// FIT: words that index the pick to a reader, a job, or a depth — the axis prestige-ranking omits.
-const FIT = /\b(audience|reader|fit|for (a|an|the|builders?|devs?|developers?|founders?|engineers?|pms?|beginners?)|role|job|task|need|use[- ]?case|depth|actionable|hands[- ]on|context|persona|ship|when you|if you|tactical|recipe)\b/i;
-// SUPERLATIVE: an unconditional "there is one winner" claim — legal only if a flip-condition exists.
-const SUPERLATIVE = /\b(the best|the one (book|tool|source|answer)|undisputed|the only|hands[- ]down|no (competition|contest|rival)|objectively best|beats everything|always the|the definitive (book|tool|source|guide|answer))\b/i;
+// ── the lexicons — loaded from authority-lexicon.json (SSOT shared with validate_prongs.py's
+// reuse gate, so the JS guard and the Python reuse gate can never drift apart). ────────────────
+//   PRESTIGE: ranking words that describe a source's reputation, not its fit to a reader.
+//   FIT: words that index the pick to a reader, a job, or a depth — the axis prestige-ranking omits.
+//   SUPERLATIVE: an unconditional "there is one winner" claim — legal only if a flip-condition exists.
+const LEX = JSON.parse(fs.readFileSync(path.join(HERE, 'authority-lexicon.json'), 'utf8'));
+const rx = (arr) => new RegExp(`\\b(${arr.join('|')})\\b`, 'i');
+const PRESTIGE = rx(LEX.prestige);
+const FIT = rx(LEX.fit);
+const SUPERLATIVE = rx(LEX.superlative);
 
 const findings = [];
 const fail = (gate, why) => findings.push({ gate, severity: 'fail', why });

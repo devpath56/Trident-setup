@@ -115,6 +115,10 @@ _run("session doors hold (open/compose/close)", ["node", "tests/test-doors.mjs"]
 # authority-guard (CF-075): a reasoning-error checker. Deleting or gutting authority-guard.mjs
 # makes a fixture behave wrong and reddens this — the trigger that makes it durable, not an orphan.
 _run("authority-guard discriminates (prestige fails, builder-fit passes)", ["node", "tests/test-authority.mjs"], _root)
+# CF-075 reuse-authority axis, SEPARATE-FILE durability (PD-017): reverting validate_prongs.py drops
+# the reuse-authority branch AND its in-file controls together; this file does not revert with it, so
+# it goes red on that reversion (file-reversion durability, not only mutation).
+_run("CF-075 reuse gate is durable by reversion (separate-file control)", [sys.executable, "tests/test-reuse-authority.py"], _root)
 # spans.mjs derives the Auditor's Spans from the Do-er's EXECUTED transcript (narrated==executed,
 # CF-046). Exercising it here makes it durable: delete/gut spans.mjs and this suite goes red.
 _run("span extractor holds (executed transcript -> Spans)", ["node", "tests/test-spans.mjs"], _root)
