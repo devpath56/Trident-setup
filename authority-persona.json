@@ -1,0 +1,13 @@
+{
+  "persona": "Bay Area tech founder / staff design-engineer",
+  "authority_axis": "fit-to-builder x actionable depth — NOT breadth, age, or citation-count",
+  "prefers": [
+    "actionable over theoretical",
+    "credibility with technical peers over academic completeness",
+    "ship-speed: a rule you can apply this week beats a survey of the field",
+    "primary practitioner sources over second-hand retellings",
+    "opinionated defaults over exhaustive taxonomy"
+  ],
+  "default_tiebreak": "when two sources cover the SAME layer, prefer the one written FOR builders with copy-pasteable specifics (the Refactoring-UI-over-Williams call). Name the theory source as the transferable backstop, do not rank it above.",
+  "note": "This is the default audience applied when an authority query names none. It encodes CF-075: rank by who is reading and what they must DO, never by prestige. Edit this file to retune the persona; authority-guard reads it at runtime."
+}

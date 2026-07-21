@@ -112,6 +112,9 @@ def _run(label, cmd, cwd):
 _root = os.path.dirname(_here)
 _run("prong validator passes (C0-C3)", [sys.executable, "prongs/validate_prongs.py"], _root)
 _run("session doors hold (open/compose/close)", ["node", "tests/test-doors.mjs"], _root)
+# authority-guard (CF-075): a reasoning-error checker. Deleting or gutting authority-guard.mjs
+# makes a fixture behave wrong and reddens this — the trigger that makes it durable, not an orphan.
+_run("authority-guard discriminates (prestige fails, builder-fit passes)", ["node", "tests/test-authority.mjs"], _root)
 # spans.mjs derives the Auditor's Spans from the Do-er's EXECUTED transcript (narrated==executed,
 # CF-046). Exercising it here makes it durable: delete/gut spans.mjs and this suite goes red.
 _run("span extractor holds (executed transcript -> Spans)", ["node", "tests/test-spans.mjs"], _root)

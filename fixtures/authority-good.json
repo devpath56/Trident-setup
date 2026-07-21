@@ -1,0 +1,12 @@
+{
+  "query": "most authoritative visual-craft source for UI",
+  "recommendation": "Refactoring UI (Wathan & Schoger, 2018)",
+  "audience": "Bay Area tech founder / design-engineer shipping product UI",
+  "job": "ship a credible UI this week without a designer on staff",
+  "criterion": "audience-fit x actionable depth — recipes a builder can apply now",
+  "alternatives": [
+    { "name": "The Non-Designer's Design Book (Robin Williams, CRAP)",
+      "wins_when": "the reader wants transferable print/graphic THEORY that carries off the web, not copy-pasteable web recipes" }
+  ],
+  "verified": true
+}
