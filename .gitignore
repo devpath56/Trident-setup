@@ -10,3 +10,6 @@ failures/*.local.jsonl
 
 # vendored deps in prototypes
 **/node_modules/
+
+# human-in-loop checkpoint ledgers (run artifacts, PD-020 observability layer)
+runs/

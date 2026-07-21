@@ -99,6 +99,46 @@ def verdict_is_binary(verdict):
                 return False, f"dimension {name!r}: score-like value {k}={val!r}"
     return True, "ok"
 
+# --- 5. authority provenance: an external standard named in a PD must be recorded durably ---
+# The "never lost" gate. A PD that grounds a design claim in an external authority must record
+# WHERE/WHY/HOW in the record itself — a structured {source,url,accessed,grounds} entry with a
+# resolvable URL — not in chat. Malformed structured entries are rejected too (no half-filled
+# provenance); legacy flat-string entries are tolerated for backward-compat.
+_AUTHORITY_LEXICON = ("langgraph", "langchain", "opentelemetry", "otel", "openinference",
+                      "anthropic", "ragas", "arize", "phoenix")
+_URL_RE = re.compile(r"^https?://\S+$", re.I)
+
+def _pd_text(rec):
+    det = rec.get("detector") or {}
+    check = str(det.get("check", "")) if isinstance(det, dict) else ""
+    return " ".join([rec.get("title", ""), rec.get("gap", ""), rec.get("guard", ""),
+                     rec.get("pattern", ""), check]).lower()
+
+def authority_violations(rec):
+    """Return reasons the record's authority provenance is unsound (empty = ok)."""
+    reasons = []
+    auth = rec.get("authority")
+    if not isinstance(auth, list):
+        return ["authority missing or not a list"]
+    structured = []
+    for a in auth:
+        if isinstance(a, str):
+            continue                                   # legacy flat entry — tolerated
+        if not isinstance(a, dict):
+            reasons.append(f"authority entry {a!r} is neither a string nor an object")
+            continue
+        structured.append(a)
+        for k in ("source", "url", "grounds"):         # where / how-to-reach / why+how-used
+            if not str(a.get(k, "")).strip():
+                reasons.append(f"authority entry missing/empty {k!r} (provenance incomplete)")
+        if a.get("url") and not _URL_RE.match(str(a["url"]).strip()):
+            reasons.append(f"authority url {a.get('url')!r} is not a resolvable http(s) URL")
+    named = [t for t in _AUTHORITY_LEXICON if t in _pd_text(rec)]
+    if named and not structured:
+        reasons.append(f"names external standard(s) {named} in prose but records NO structured "
+                       f"authority {{source,url,grounds}} — where/why/how would be lost")
+    return reasons
+
 # --- assembling the checks ---
 def _load_jsonl(path):
     out = []
@@ -137,6 +177,12 @@ def validate_all():
                 ck(False, f"{rid}: META-SCOPE {reason}")
         else:
             ck(True, f"{rid}: meta-scope ok (touches only Trident's own design tree)")
+        auth_reasons = authority_violations(r)
+        if auth_reasons:
+            for reason in auth_reasons:
+                ck(False, f"{rid}: AUTHORITY {reason}")
+        else:
+            ck(True, f"{rid}: authority provenance sound (structured where/why/how, never lost)")
     ck(len(ids) == len(set(ids)), "no duplicate PD numbers")
 
     # detector reality — the gate must actually fire on known-bad input (CF-060)
@@ -149,6 +195,11 @@ def validate_all():
     oos = _load_fixture("pd_out_of_scope.json")
     ck(bool(meta_scope_violations(oos)),
        "meta-scope gate: REJECTS an out-of-scope (object-level) PD (control fired)")
+
+    # authority gate must fire on a PD that name-drops a standard without structured provenance (control)
+    am = _load_fixture("pd_authority_missing.json")
+    ck(bool(authority_violations(am)),
+       "authority gate: REJECTS a PD naming an external standard with NO structured authority (control fired)")
 
     return checks
 

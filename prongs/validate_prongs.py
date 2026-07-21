@@ -805,6 +805,44 @@ def check_rca_on_fail(rows):
     return out
 
 
+# ── the human-in-loop observability layer (PD-020): checkpoint records ──────────
+_CKPT_REQUIRED = ("runId", "iteration", "ts", "gen_ai.operation.name", "status")
+_CKPT_OPS = ("eval", "invoke_agent", "execute_tool", "promote")
+_CKPT_STATUS = ("running", "interrupted", "approved", "edited", "rejected")
+
+def check_checkpoint_schema(checkpoints):
+    """PD-020 — a checkpoint (one line of runs/<id>/checkpoints.jsonl) must carry the fields the
+    observability contract depends on, with a valid OTel GenAI op and a valid LangGraph HITL status.
+    A malformed checkpoint is an unreadable trace — the observability equivalent of a silent no-op."""
+    out = []
+    for i, c in enumerate(checkpoints):
+        miss = [k for k in _CKPT_REQUIRED if _blank(c.get(k)) and c.get(k) != 0]
+        if miss:
+            out.append(f"checkpoint #{i}: missing required field(s) {miss}")
+        op = c.get("gen_ai.operation.name")
+        if op is not None and op not in _CKPT_OPS:
+            out.append(f"checkpoint #{i}: gen_ai.operation.name {op!r} not in {_CKPT_OPS} (OTel GenAI)")
+        st = c.get("status")
+        if st is not None and st not in _CKPT_STATUS:
+            out.append(f"checkpoint #{i}: status {st!r} not a LangGraph HITL state {_CKPT_STATUS}")
+    return out
+
+def check_pause_before_irreversible(checkpoints):
+    """PD-020 / Anthropic trustworthy-agents — an IRREVERSIBLE step (`gen_ai.operation.name == 'promote'`,
+    e.g. staging→live) must PAUSE for the human: its checkpoint status must be 'interrupted' (an
+    interrupt the human then clears via `checkpoint.mjs resume --approve`). A 'running' promote executed
+    an irreversible act with no interrupt to approve — precisely the pause-before-irreversible violation.
+    The resume record that clears it is a separate `eval`/approved checkpoint, so this never false-fires
+    on a legitimately-cleared promote."""
+    out = []
+    for c in checkpoints:
+        if c.get("gen_ai.operation.name") == "promote" and c.get("status") != "interrupted":
+            out.append(f"promote checkpoint #{c.get('iteration')} (run {c.get('runId')!r}) is IRREVERSIBLE "
+                       f"but status is {c.get('status')!r}, not 'interrupted' — it did not pause for human "
+                       "approval (pause-before-irreversible, Anthropic trustworthy agents)")
+    return out
+
+
 # ── negative controls ─────────────────────────────────────────────────────────
 def controls():
     out = []
@@ -1153,6 +1191,24 @@ def controls():
                 not check_rca_on_fail([_v_pass])))
     out.append(("PD-018 does NOT retro-fire on a pre-cutoff failing verdict (forward-gate)",
                 not check_rca_on_fail([_v_old])))
+
+    # PD-020 checkpoint layer — schema + pause-before-irreversible
+    ck = lambda **kw: {"runId": "r", "iteration": 0, "ts": "t", "gen_ai.operation.name": "eval",
+                       "status": "running", **kw}
+    out.append(("PD-020 checkpoint schema accepts a well-formed record (positive control)",
+                not check_checkpoint_schema([ck()])))
+    out.append(("PD-020 checkpoint schema rejects a missing required field (runId)",
+                bool(check_checkpoint_schema([{k: v for k, v in ck().items() if k != "runId"}]))))
+    out.append(("PD-020 checkpoint schema rejects an invalid OTel op",
+                bool(check_checkpoint_schema([ck(**{"gen_ai.operation.name": "frobnicate"})]))))
+    out.append(("PD-020 checkpoint schema rejects an invalid LangGraph HITL status",
+                bool(check_checkpoint_schema([ck(status="vibing")]))))
+    out.append(("PD-020 pause-before-irreversible FIRES on a 'running' promote (irreversible, no pause — control fired)",
+                bool(check_pause_before_irreversible([ck(**{"gen_ai.operation.name": "promote"})]))))
+    out.append(("PD-020 pause-before-irreversible PASSES an 'interrupted' promote (paused for approval — positive control)",
+                not check_pause_before_irreversible([ck(status="interrupted", **{"gen_ai.operation.name": "promote"})])))
+    out.append(("PD-020 pause-before-irreversible EXEMPTS a 'running' non-promote step (reversible — no pause owed)",
+                not check_pause_before_irreversible([ck(**{"gen_ai.operation.name": "execute_tool"})])))
     return out
 
 
@@ -1191,6 +1247,22 @@ def main():
                 print(f"       {p}")
         else:
             print(f"  ok   {name}")
+
+    # PD-020 — validate any human-in-loop checkpoint ledgers written by the observability layer
+    ckpt_ledgers = sorted(Path(".").glob("runs/*/checkpoints.jsonl"))
+    ck_rows = [c for f in ckpt_ledgers for c in read(f)]
+    if ckpt_ledgers:
+        for name, probs in [
+            ("PD-020 checkpoint records are well-formed (schema + OTel op + HITL status)", check_checkpoint_schema(ck_rows)),
+            ("PD-020 every irreversible (promote) checkpoint paused for human approval", check_pause_before_irreversible(ck_rows)),
+        ]:
+            if probs:
+                failed += 1
+                print(f"  FAIL {name}")
+                for p in probs:
+                    print(f"       {p}")
+            else:
+                print(f"  ok   {name}  ({len(ck_rows)} checkpoint(s) across {len(ckpt_ledgers)} run(s))")
 
     print("\n  negative controls (each must fire):")
     for name, fired in controls():

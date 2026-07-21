@@ -1,0 +1,16 @@
+{
+  "id": "PD-901",
+  "date": "2026-07-20",
+  "title": "FIXTURE — names an external standard but drops its provenance (MUST be rejected by the authority gate)",
+  "kind": "decision",
+  "status": "pre-emptive",
+  "scope": "trident-meta",
+  "gap": "fixture only — a PD that grounds a design claim in LangGraph human-in-the-loop but records no structured authority, so where/why/how the standard was used would be lost to chat.",
+  "guard": "n/a — fixture",
+  "pattern": "A design decision cites an authoritative standard (LangGraph) in prose, but the authority array holds only a flat string — the URL, access date, and grounds are never committed.",
+  "detector": {"kind": "reminder", "check": "fixture", "signal": "fixture"},
+  "authority": ["LangGraph"],
+  "promotion_trigger": "fixture",
+  "applied_in": ["prongs/checkpoint.mjs"],
+  "origin": "fixture — negative control for authority_violations()"
+}

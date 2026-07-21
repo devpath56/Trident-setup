@@ -91,6 +91,29 @@ mutation (`mutate.py`) already proves each new check is killed by its own contro
 the class mutation cannot — reverting the *actual fix in the actual file* and confirming the *real*
 suite flips (the fix-and-guard-revert-together leak). Forward-only from the cutoff.
 
+### Human-in-loop observability — the checkpoint layer (PD-020)
+Any iterative agent loop Trident hosts or a project calls (e.g. the skill-optimizer's `eval → deficiency
+→ retrieve → fix → re-eval` driver) runs through a **resumable checkpoint** so the human keeps full
+observability **and** control. It is **Claude-Code-native** (files + re-invocation — no API, exporter, or
+collector) and **conforms to three authorities** (recorded with source/url/where-why-how in decisions
+ledger **PD-020** — the provenance is committed, never lost):
+- **LangGraph human-in-the-loop** — every iteration is a checkpoint (`runs/<id>/checkpoints.jsonl`); a
+  pause is `interrupt()` = write-checkpoint + **exit 3**; the human returns **approve / edit / reject** via
+  `node prongs/checkpoint.mjs resume`; `parent` is time-travel / rollback.
+- **OpenTelemetry GenAI semantic conventions** — the decision graph is captured as `spans[]` (from
+  `prongs/spans.mjs`) under a `gen_ai.operation.name`; the trace is **executed, not narrated**.
+- **Anthropic trustworthy agents** — a transparency card, explicit `stop{}` conditions,
+  **pause-before-irreversible**, **ask-when-uncertain**, and **propose ≠ dispose** (nothing auto-applies).
+
+The load-bearing split: **observability is continuous** (a checkpoint every round); **control is discrete**
+(pause only at consequential / irreversible steps). Tools: `node prongs/checkpoint.mjs write|resume|show`.
+**Enforced:** `validate_prongs.py check_checkpoint_schema` (every checkpoint carries the OTel op + LangGraph
+status the contract depends on) and `check_pause_before_irreversible` (a `promote`/irreversible checkpoint
+must be `interrupted` — it cannot execute without an interrupt the human clears). A design decision that
+grounds itself in an external standard must carry structured `authority {source,url,grounds}`, or
+`validate_decisions.py authority_violations` rejects the ledger (provenance never lost). Both gates are
+mutation-covered (`mutate.py`).
+
 **Phase 1 — Build**
 6. Spawn **Do-er** (Opus): input = task + `IntentCard` (honor must_haves / forbid / pinned_feedback).
    → returns `Output` (the diff/result). The Do-er's `Spans` are **not** taken from its self-narration:

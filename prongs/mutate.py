@@ -58,7 +58,7 @@ TARGETS = ["check_schema", "check_schema_kinds", "check_verdict_cites_intent", "
            "check_rule10_unleaked", "check_rule12_not_self_graded", "check_rule6_reversibility", "check_rat",
            "check_rca", "check_no_silent_tool_error", "check_claim_has_span",
            "check_prior_art", "check_design_prong_no_execution", "check_durability_gate",
-           "check_rca_on_fail"]
+           "check_rca_on_fail", "check_checkpoint_schema", "check_pause_before_irreversible"]
 
 print("== mutation test: break each checker, confirm its controls notice ==\n")
 print(f"  baseline: {sum(BASE.values())}/{len(BASE)} controls firing\n")
