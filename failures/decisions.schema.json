@@ -40,8 +40,8 @@
     },
     "authority": {
       "type": "array",
-      "items": {"type": "string"},
-      "description": "External authorities that informed the decision (public references only). This is what distinguishes a PD from a hypothetical: it is grounded in current practice, not invented."
+      "items": {"oneOf": [{"type": "string"}, {"type": "object", "required": ["source", "url", "grounds"], "additionalProperties": false, "properties": {"source": {"type": "string"}, "url": {"type": "string"}, "accessed": {"type": ["string", "null"]}, "grounds": {"type": "string", "description": "WHERE/WHY/HOW used: the decision it justifies + how realized."}}}]},
+      "description": "External authorities that informed the decision (public references only). Prefer a STRUCTURED entry {source,url,accessed,grounds} so where/why/how is durable and never lost (a bare string is legacy). Distinguishes a PD from a hypothetical: grounded in current practice, not invented."
     },
     "promotion_trigger": {"type": "string", "description": "The concrete observed event that would convert this PD into a real CF."},
     "applied_in": {"type": "array", "items": {"type": "string"}, "minItems": 1, "description": "Repo-relative files changed to enact the decision. This is the meta-scope signal: every path must resolve inside Trident's own design tree (.claude/skills/, failures/, tests/, core root docs) and exist on disk, or validate_decisions.py rejects the record as object-level."},

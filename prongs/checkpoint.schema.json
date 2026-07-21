@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Trident checkpoint record",
+  "description": "One line of runs/<runId>/checkpoints.jsonl: a resumable per-iteration snapshot of an agent loop, for human-in-loop OBSERVABILITY + control, Claude-Code-native (files + re-invocation, no API). Format CONFORMS TO three authorities (see failures/decisions.jsonl PD authority for urls): (1) OpenTelemetry GenAI semantic conventions — the decision-graph spans + gen_ai.* attrs; (2) LangGraph human-in-the-loop — checkpoint/interrupt/resume/rollback + approve/edit/reject/respond; (3) Anthropic trustworthy agents — transparency, stopping conditions, pause-before-irreversible.",
+  "type": "object",
+  "required": ["runId", "iteration", "ts", "gen_ai.operation.name", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "runId": {"type": "string"},
+    "iteration": {"type": "integer", "minimum": 0},
+    "ts": {"type": "string"},
+    "parent": {"type": ["integer", "null"], "description": "iteration this resumes from — LangGraph time-travel / rollback."},
+    "gen_ai.operation.name": {"type": "string", "enum": ["eval", "invoke_agent", "execute_tool", "promote"], "description": "OpenTelemetry GenAI semantic-convention operation name."},
+    "decision": {"type": "object", "description": "Transparency: show the plan (Anthropic).", "properties": {"deficiency": {"type": ["string", "null"]}, "retrieve": {"type": "object", "properties": {"query": {"type": ["string", "null"]}, "source": {"type": ["string", "null"]}, "cite": {"type": ["string", "null"]}}}, "proposed_fix": {"type": ["string", "null"]}}},
+    "spans": {"type": "array", "description": "Executed decision graph from prongs/spans.mjs (reduced OpenInference/OTel GenAI). Executed, not narrated.", "items": {"type": "object"}},
+    "delta": {"type": "object", "description": "Progress vs success criteria (Anthropic).", "properties": {"before": {}, "after": {}, "metric": {"type": ["string", "null"]}, "bar": {}, "distance": {}}},
+    "stop": {"type": "object", "description": "Stopping conditions (Anthropic).", "properties": {"converged": {"type": "boolean"}, "max_iterations": {"type": "integer"}, "reason": {"type": ["string", "null"]}}},
+    "status": {"type": "string", "enum": ["running", "interrupted", "approved", "edited", "rejected"], "description": "LangGraph HITL state."},
+    "awaiting": {"type": ["array", "null"], "items": {"type": "string", "enum": ["approve", "edit", "reject", "respond"]}, "description": "LangGraph HITL decision types offered at an interrupt (pause)."},
+    "human": {"type": ["object", "null"], "description": "The human disposition on resume: {decision, note}. propose != dispose — nothing auto-applies."}
+  }
+}
