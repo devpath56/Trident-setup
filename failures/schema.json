@@ -39,6 +39,10 @@
       "type": "string",
       "description": "Generalized 1-2 sentence pattern. No personal specifics."
     },
+    "root_cause": {
+      "type": ["string", "null"],
+      "description": "The RCA diagnosis: WHY this happened (the causal mechanism + why existing guards missed it), distinct from the generalized `pattern`. Makes 'log fail -> RCA -> deterministic detector' first-class, aligning CF logging with the rca-record discipline (PD-018)."
+    },
     "detector": {
       "type": "object",
       "required": ["kind", "check", "signal"],
